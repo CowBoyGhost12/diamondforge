@@ -1,0 +1,2161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DiamondForge — Baseball Training Planner</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;0,800;0,900;1,700&family=Barlow:wght@300;400;500;600&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #0a0c0f;
+    --bg-card: #111418;
+    --bg-card2: #161b22;
+    --bg-card3: #1c2330;
+    --border: #252d3a;
+    --border2: #2f3a4a;
+    --text-primary: #e8edf3;
+    --text-secondary: #7a8fa6;
+    --text-muted: #4a5568;
+    --accent-orange: #f97316;
+    --accent-orange-dim: #7c3a0f;
+    --accent-green: #22c55e;
+    --accent-green-dim: #14532d;
+    --accent-blue: #3b82f6;
+    --accent-blue-dim: #1e3a8a;
+    --accent-red: #ef4444;
+    --accent-red-dim: #7f1d1d;
+    --accent-purple: #a855f7;
+    --accent-purple-dim: #4c1d95;
+    --accent-gray: #6b7280;
+    --accent-gray-dim: #1f2937;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Barlow', sans-serif;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .font-bebas { font-family: 'Bebas Neue', cursive; }
+  .font-barlow-condensed { font-family: 'Barlow Condensed', sans-serif; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg-base); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.5;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .card2 {
+    background: var(--bg-card2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  /* Nav */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(10,12,15,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Progress circle */
+  .progress-ring { transform: rotate(-90deg); }
+  .progress-ring circle { transition: stroke-dashoffset 0.6s ease; }
+
+  /* Session type badges */
+  .badge-strength { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+  .badge-hitting   { background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+  .badge-bullpen   { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .badge-recovery  { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+  .badge-rest      { background: rgba(107,114,128,0.15);color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+
+  .dot-strength { background: var(--accent-blue); }
+  .dot-hitting  { background: var(--accent-green); }
+  .dot-bullpen  { background: var(--accent-red); }
+  .dot-recovery { background: var(--accent-purple); }
+  .dot-rest     { background: var(--accent-gray); }
+
+  /* Page transitions */
+  .page { display: none; animation: fadeIn 0.2s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Input styles */
+  input, select, textarea {
+    background: var(--bg-card3);
+    border: 1px solid var(--border2);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: 'Barlow', sans-serif;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent-orange); }
+  select option { background: var(--bg-card3); }
+
+  /* Buttons */
+  .btn-primary {
+    background: var(--accent-orange);
+    color: #000;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+    border-radius: 8px;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-primary:hover { background: #fb923c; transform: translateY(-1px); }
+  .btn-secondary {
+    background: var(--bg-card3);
+    color: var(--text-primary);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 8px;
+    padding: 8px 16px;
+    border: 1px solid var(--border2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { border-color: var(--accent-orange); color: var(--accent-orange); }
+
+  /* Macro bar */
+  .macro-bar { height: 6px; border-radius: 3px; background: var(--bg-card3); overflow: hidden; }
+  .macro-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+  /* Day cell in planner */
+  .day-cell {
+    min-height: 80px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .day-cell:hover { border-color: var(--border2); background: var(--bg-card2); }
+  .day-cell.today { border-color: var(--accent-orange) !important; }
+
+  /* Quick stat cards */
+  .stat-card {
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  /* Set row */
+  .set-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .set-num {
+    width: 26px; height: 26px;
+    background: var(--bg-card3);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+  .set-check {
+    width: 26px; height: 26px;
+    background: var(--accent-green-dim);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+    border: 1px solid var(--accent-green);
+    transition: all 0.15s;
+  }
+  .set-check.done { background: var(--accent-green); }
+
+  /* Strikethrough animation */
+  @keyframes strikethrough {
+    from { width: 0; }
+    to   { width: 100%; }
+  }
+
+  /* Logo glow */
+  .logo-glow {
+    text-shadow: 0 0 30px rgba(249,115,22,0.4), 0 0 60px rgba(249,115,22,0.15);
+  }
+
+  /* Velocity display */
+  .velo-display {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 64px;
+    color: var(--accent-orange);
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(249,115,22,0.4);
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 80px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--bg-card2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 300;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Drag handle */
+  .drag-over { border-color: var(--accent-orange) !important; background: rgba(249,115,22,0.05) !important; }
+
+  /* Scrollable content area */
+  .main-content {
+    padding: 16px;
+    padding-bottom: 80px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  /* Header bar */
+  .app-header {
+    background: rgba(10,12,15,0.9);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: 12px 16px;
+  }
+
+  /* Exercise library item */
+  .exercise-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .exercise-item:hover { background: var(--bg-card3); }
+  .exercise-item.selected { background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.3); }
+
+  /* Nutrition macro colors */
+  .protein-fill { background: linear-gradient(90deg, #ef4444, #f97316); }
+  .carb-fill    { background: linear-gradient(90deg, #f97316, #eab308); }
+  .fat-fill     { background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+
+  /* Tab pills */
+  .tab-pill {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--text-secondary);
+    border: 1px solid transparent;
+  }
+  .tab-pill.active {
+    background: rgba(249,115,22,0.15);
+    color: var(--accent-orange);
+    border-color: rgba(249,115,22,0.3);
+  }
+
+  /* Pitch type tag */
+  .pitch-tag {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    color: var(--text-secondary);
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .pitch-tag.active {
+    background: rgba(239,68,68,0.2);
+    border-color: rgba(239,68,68,0.5);
+    color: #f87171;
+  }
+
+  /* Effort slider */
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--bg-card3);
+    outline: none;
+    padding: 0;
+    border: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent-orange);
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(249,115,22,0.5);
+  }
+
+  /* Completion ring animation */
+  @keyframes spin { to { stroke-dashoffset: 0; } }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- APP HEADER -->
+<div class="app-header">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="13" stroke="#f97316" stroke-width="1.5"/>
+        <path d="M7 14 Q14 8 21 14 Q14 20 7 14Z" fill="#f97316" opacity="0.2"/>
+        <path d="M7 14 Q14 8 21 14" stroke="#f97316" stroke-width="1.5"/>
+        <path d="M7 14 Q14 20 21 14" stroke="#f97316" stroke-width="1.5" opacity="0.5"/>
+        <circle cx="14" cy="14" r="2" fill="#f97316"/>
+      </svg>
+      <span class="font-bebas text-2xl logo-glow tracking-wider" style="color: var(--accent-orange);">DiamondForge</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="font-barlow-condensed text-xs" style="color: var(--text-muted);" id="headerDate"></span>
+      <button onclick="exportData()" class="btn-secondary text-xs px-3 py-1.5">Export</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGES -->
+<div class="main-content">
+
+  <!-- ── DASHBOARD ── -->
+  <div class="page active" id="page-dashboard">
+    <div class="mb-4">
+      <p class="font-barlow-condensed text-sm" style="color: var(--text-muted);">WEEK OF <span id="weekLabel"></span></p>
+      <h1 class="font-bebas text-4xl tracking-wide" style="color: var(--text-primary);">Training Overview</h1>
+    </div>
+
+    <!-- Weekly volume strip -->
+    <div class="grid grid-cols-3 gap-3 mb-4">
+      <div class="stat-card p-3">
+        <div class="font-barlow-condensed text-xs mb-1" style="color: var(--text-muted);">LIFTS</div>
+        <div class="font-bebas text-3xl" style="color: var(--accent-blue);" id="dashLifts">0</div>
+        <div class="font-barlow-condensed text-xs" style="color: var(--text-secondary);">sessions</div>
+      </div>
+      <div class="stat-card p-3">
+        <div class="font-barlow-condensed text-xs mb-1" style="color: var(--text-muted);">SWINGS</div>
+        <div class="font-bebas text-3xl" style="color: var(--accent-green);" id="dashSwings">0</div>
+        <div class="font-barlow-condensed text-xs" style="color: var(--text-secondary);">total</div>
+      </div>
+      <div class="stat-card p-3">
+        <div class="font-barlow-condensed text-xs mb-1" style="color: var(--text-muted);">PITCHES</div>
+        <div class="font-bebas text-3xl" style="color: var(--accent-red);" id="dashPitches">0</div>
+        <div class="font-barlow-condensed text-xs" style="color: var(--text-secondary);">thrown</div>
+      </div>
+    </div>
+
+    <!-- Progress circles row -->
+    <div class="card p-4 mb-4">
+      <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color: var(--text-muted);">WEEKLY PROGRESS</div>
+      <div class="flex justify-around">
+        <div class="flex flex-col items-center gap-2">
+          <svg width="72" height="72" class="progress-ring">
+            <circle cx="36" cy="36" r="30" fill="none" stroke="var(--bg-card3)" stroke-width="6"/>
+            <circle cx="36" cy="36" r="30" fill="none" stroke="var(--accent-orange)" stroke-width="6"
+              stroke-linecap="round" id="ring-training"
+              stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+          </svg>
+          <div class="text-center">
+            <div class="font-barlow-condensed text-base font-bold" id="ring-training-pct">0%</div>
+            <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">SESSIONS</div>
+          </div>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <svg width="72" height="72" class="progress-ring">
+            <circle cx="36" cy="36" r="30" fill="none" stroke="var(--bg-card3)" stroke-width="6"/>
+            <circle cx="36" cy="36" r="30" fill="none" stroke="var(--accent-green)" stroke-width="6"
+              stroke-linecap="round" id="ring-protein"
+              stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+          </svg>
+          <div class="text-center">
+            <div class="font-barlow-condensed text-base font-bold" id="ring-protein-pct">0%</div>
+            <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PROTEIN</div>
+          </div>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <svg width="72" height="72" class="progress-ring">
+            <circle cx="36" cy="36" r="30" fill="none" stroke="var(--bg-card3)" stroke-width="6"/>
+            <circle cx="36" cy="36" r="30" fill="none" stroke="var(--accent-blue)" stroke-width="6"
+              stroke-linecap="round" id="ring-calories"
+              stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+          </svg>
+          <div class="text-center">
+            <div class="font-barlow-condensed text-base font-bold" id="ring-calories-pct">0%</div>
+            <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CALORIES</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Today's plan -->
+    <div class="card p-4 mb-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-barlow-condensed text-xs font-semibold" style="color: var(--text-muted);">TODAY'S SESSIONS</div>
+        <button onclick="navigate('planner')" class="font-barlow-condensed text-xs" style="color: var(--accent-orange);">Edit Plan →</button>
+      </div>
+      <div id="todaySessions"></div>
+    </div>
+
+    <!-- Quick start -->
+    <div class="mb-4">
+      <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color: var(--text-muted);">QUICK START</div>
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="quickStart('lifting')" class="card p-3 text-left transition-all hover:border-blue-500">
+          <div class="flex items-center gap-2 mb-1">
+            <div class="w-2 h-2 rounded-full dot-strength"></div>
+            <span class="font-barlow-condensed font-bold text-sm">Log Lifting</span>
+          </div>
+          <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">Sets, reps, weight</div>
+        </button>
+        <button onclick="quickStart('hitting')" class="card p-3 text-left transition-all hover:border-green-500">
+          <div class="flex items-center gap-2 mb-1">
+            <div class="w-2 h-2 rounded-full dot-hitting"></div>
+            <span class="font-barlow-condensed font-bold text-sm">Log Hitting</span>
+          </div>
+          <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">Swings & exit velo</div>
+        </button>
+        <button onclick="quickStart('bullpen')" class="card p-3 text-left transition-all hover:border-red-500">
+          <div class="flex items-center gap-2 mb-1">
+            <div class="w-2 h-2 rounded-full dot-bullpen"></div>
+            <span class="font-barlow-condensed font-bold text-sm">Log Bullpen</span>
+          </div>
+          <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">Pitch count & velo</div>
+        </button>
+        <button onclick="quickStart('recovery')" class="card p-3 text-left transition-all hover:border-purple-500">
+          <div class="flex items-center gap-2 mb-1">
+            <div class="w-2 h-2 rounded-full dot-recovery"></div>
+            <span class="font-barlow-condensed font-bold text-sm">Log Recovery</span>
+          </div>
+          <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">Mobility & rest</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Recent logs -->
+    <div class="card p-4">
+      <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color: var(--text-muted);">RECENT ACTIVITY</div>
+      <div id="recentLogs"></div>
+    </div>
+  </div>
+
+  <!-- ── PLANNER ── -->
+  <div class="page" id="page-planner">
+    <div class="mb-4">
+      <p class="font-barlow-condensed text-sm" style="color: var(--text-muted);">WEEKLY SCHEDULE</p>
+      <h1 class="font-bebas text-4xl tracking-wide">Training Planner</h1>
+    </div>
+
+    <!-- Phase selector -->
+    <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
+      <button class="tab-pill active" data-phase="Early Offseason" onclick="setPhase(this)">Early Off</button>
+      <button class="tab-pill" data-phase="Strength Phase" onclick="setPhase(this)">Strength</button>
+      <button class="tab-pill" data-phase="Power Phase" onclick="setPhase(this)">Power</button>
+      <button class="tab-pill" data-phase="Pre-Season" onclick="setPhase(this)">Pre-Season</button>
+    </div>
+
+    <!-- Weekly summary strip -->
+    <div class="card2 p-3 mb-4">
+      <div class="grid grid-cols-4 gap-2 text-center">
+        <div><div class="font-bebas text-xl" style="color:var(--accent-blue);" id="plan-lifts">0</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">LIFTS</div></div>
+        <div><div class="font-bebas text-xl" style="color:var(--accent-green);" id="plan-hitting">0</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">HITTING</div></div>
+        <div><div class="font-bebas text-xl" style="color:var(--accent-red);" id="plan-bullpen">0</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">BULLPEN</div></div>
+        <div><div class="font-bebas text-xl" style="color:var(--accent-purple);" id="plan-recovery">0</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">RECOVERY</div></div>
+      </div>
+    </div>
+
+    <!-- 7-day grid -->
+    <div id="weekGrid" class="grid gap-2" style="grid-template-columns: repeat(7, 1fr);">
+    </div>
+
+    <div class="mt-3 flex gap-2 flex-wrap">
+      <div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full dot-strength"></div><span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">Strength</span></div>
+      <div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full dot-hitting"></div><span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">Hitting</span></div>
+      <div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full dot-bullpen"></div><span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">Bullpen</span></div>
+      <div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full dot-recovery"></div><span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">Recovery</span></div>
+      <div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full dot-rest"></div><span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">Rest</span></div>
+    </div>
+  </div>
+
+  <!-- ── WORKOUTS ── -->
+  <div class="page" id="page-workouts">
+    <div class="mb-4">
+      <p class="font-barlow-condensed text-sm" style="color: var(--text-muted);">EXERCISE LIBRARY</p>
+      <h1 class="font-bebas text-4xl tracking-wide">Workout Builder</h1>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
+      <button class="tab-pill active" onclick="setWorkoutTab('library', this)">Library</button>
+      <button class="tab-pill" onclick="setWorkoutTab('builder', this)">Builder</button>
+      <button class="tab-pill" onclick="setWorkoutTab('templates', this)">Templates</button>
+    </div>
+
+    <!-- Library -->
+    <div id="workout-library">
+      <!-- Add exercise form -->
+      <div class="card p-4 mb-3">
+        <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color:var(--text-muted);">ADD EXERCISE TO LIBRARY</div>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <div class="col-span-2">
+            <input type="text" id="new-ex-name" placeholder="Exercise name..." class="w-full text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">TYPE</label>
+            <select id="new-ex-cat" class="w-full mt-1 text-sm">
+              <option value="strength">Strength</option>
+              <option value="power">Power</option>
+              <option value="rotational">Rotational</option>
+              <option value="shoulder">Shoulder</option>
+              <option value="mobility">Mobility</option>
+              <option value="cardio">Cardio</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">MUSCLES</label>
+            <input type="text" id="new-ex-muscles" placeholder="e.g. Quads, Glutes" class="w-full mt-1 text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">DEFAULT SETS</label>
+            <input type="number" id="new-ex-sets" placeholder="3" min="1" max="20" class="w-full mt-1 text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">DEFAULT REPS</label>
+            <input type="number" id="new-ex-reps" placeholder="10" min="1" max="999" class="w-full mt-1 text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">REST BETWEEN SETS</label>
+            <select id="new-ex-rest" class="w-full mt-1 text-sm">
+              <option value="30s">30 sec</option>
+              <option value="45s">45 sec</option>
+              <option value="60s" selected>60 sec</option>
+              <option value="90s">90 sec</option>
+              <option value="2min">2 min</option>
+              <option value="3min">3 min</option>
+              <option value="5min">5 min</option>
+            </select>
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">WEIGHT (optional)</label>
+            <input type="number" id="new-ex-weight" placeholder="0 lb" min="0" class="w-full mt-1 text-sm">
+          </div>
+          <div class="col-span-2">
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">NOTES</label>
+            <input type="text" id="new-ex-notes" placeholder="Coaching cue or technique note..." class="w-full mt-1 text-sm">
+          </div>
+        </div>
+        <button onclick="addExerciseToLibrary()" class="btn-primary w-full">Add to Library</button>
+      </div>
+
+      <!-- Search + filter -->
+      <div class="card2 flex items-center gap-2 p-2 mb-3">
+        <svg width="16" height="16" fill="none" stroke="var(--text-muted)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="exerciseSearch" placeholder="Search exercises..." class="flex-1 bg-transparent border-none p-0 text-sm" oninput="renderLibrary()" style="outline:none;">
+      </div>
+      <div class="flex gap-2 mb-3 overflow-x-auto pb-1" id="libCatFilters">
+        <button class="tab-pill active" data-cat="all" onclick="setExCat(this)">All</button>
+        <button class="tab-pill" data-cat="strength" onclick="setExCat(this)">Strength</button>
+        <button class="tab-pill" data-cat="power" onclick="setExCat(this)">Power</button>
+        <button class="tab-pill" data-cat="rotational" onclick="setExCat(this)">Rotational</button>
+        <button class="tab-pill" data-cat="shoulder" onclick="setExCat(this)">Shoulder</button>
+        <button class="tab-pill" data-cat="mobility" onclick="setExCat(this)">Mobility</button>
+        <button class="tab-pill" data-cat="cardio" onclick="setExCat(this)">Cardio</button>
+        <button class="tab-pill" data-cat="other" onclick="setExCat(this)">Other</button>
+      </div>
+      <div id="exerciseList" class="card p-2"></div>
+    </div>
+
+    <!-- Builder -->
+    <div id="workout-builder" class="hidden">
+      <div class="card p-4 mb-4">
+        <div class="font-barlow-condensed font-semibold text-sm mb-3" style="color:var(--text-muted);">WORKOUT DETAILS</div>
+        <input type="text" id="wb-name" placeholder="Workout name..." class="w-full mb-2 text-sm">
+        <select id="wb-phase" class="w-full mb-2 text-sm">
+          <option value="Early Offseason">Early Offseason</option>
+          <option value="Strength Phase">Strength Phase</option>
+          <option value="Power Phase">Power Phase</option>
+          <option value="Pre-Season">Pre-Season</option>
+        </select>
+        <select id="wb-type" class="w-full text-sm">
+          <option value="strength">Strength</option>
+          <option value="hitting">Hitting</option>
+          <option value="bullpen">Bullpen</option>
+          <option value="recovery">Recovery</option>
+        </select>
+      </div>
+
+      <div id="builderExercises" class="mb-4"></div>
+
+      <button onclick="addExerciseToBuilder()" class="btn-secondary w-full mb-3">+ Add Exercise</button>
+      <button onclick="saveWorkoutTemplate()" class="btn-primary w-full">Save Template</button>
+    </div>
+
+    <!-- Templates -->
+    <div id="workout-templates" class="hidden">
+      <div id="templatesList"></div>
+    </div>
+  </div>
+
+  <!-- ── LOG ── -->
+  <div class="page" id="page-log">
+    <div class="mb-4">
+      <p class="font-barlow-condensed text-sm" style="color: var(--text-muted);">SESSION TRACKER</p>
+      <h1 class="font-bebas text-4xl tracking-wide">Session Log</h1>
+    </div>
+
+    <!-- Log type tabs -->
+    <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
+      <button class="tab-pill active" onclick="setLogTab('lifting', this)">Lifting</button>
+      <button class="tab-pill" onclick="setLogTab('hitting', this)">Hitting</button>
+      <button class="tab-pill" onclick="setLogTab('bullpen', this)">Bullpen</button>
+      <button class="tab-pill" onclick="setLogTab('history', this)">History</button>
+    </div>
+
+    <!-- Lifting Logger -->
+    <div id="log-lifting">
+      <div class="card p-4 mb-4">
+        <div class="flex gap-2 mb-3">
+          <div class="flex-1">
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">DATE</label>
+            <input type="date" id="lift-date" class="w-full mt-1 text-sm">
+          </div>
+          <div class="flex-1">
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">TEMPLATE</label>
+            <select id="lift-template" class="w-full mt-1 text-sm" onchange="loadLiftTemplate()">
+              <option value="">Custom</option>
+            </select>
+          </div>
+        </div>
+        <div class="font-barlow-condensed text-xs mb-2" style="color:var(--text-muted);">NOTES</div>
+        <textarea id="lift-notes" rows="2" class="w-full text-sm" placeholder="Session notes..."></textarea>
+      </div>
+
+      <div id="liftExercises"></div>
+      <button onclick="addLiftExercise()" class="btn-secondary w-full mb-3">+ Add Exercise</button>
+      <button onclick="saveLiftLog()" class="btn-primary w-full">Save Session</button>
+    </div>
+
+    <!-- Hitting Logger -->
+    <div id="log-hitting" class="hidden">
+      <div class="card p-4 mb-4">
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">DATE</label>
+            <input type="date" id="hit-date" class="w-full mt-1 text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">SESSION TYPE</label>
+            <select id="hit-type" class="w-full mt-1 text-sm">
+              <option>Cage Work</option>
+              <option>Front Toss</option>
+              <option>Live BP</option>
+              <option>Tee Work</option>
+              <option>Game Sim</option>
+            </select>
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">TOTAL SWINGS</label>
+            <input type="number" id="hit-swings" placeholder="0" class="w-full mt-1 text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">AVG EXIT VELO (mph)</label>
+            <input type="number" id="hit-avgvelo" placeholder="85" class="w-full mt-1 text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">MAX EXIT VELO (mph)</label>
+            <input type="number" id="hit-maxvelo" placeholder="95" class="w-full mt-1 text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">HARD HIT % (>95mph)</label>
+            <input type="number" id="hit-hardhit" placeholder="40" class="w-full mt-1 text-sm">
+          </div>
+        </div>
+
+        <!-- Big exit velo display -->
+        <div class="flex items-end gap-3 my-3 px-2">
+          <div>
+            <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PEAK EXIT VELO</div>
+            <div class="velo-display" id="veloDisplay">—</div>
+          </div>
+          <div class="font-bebas text-lg mb-2" style="color:var(--text-secondary);">mph</div>
+        </div>
+
+        <textarea id="hit-notes" rows="2" class="w-full text-sm" placeholder="Session notes..."></textarea>
+      </div>
+      <button onclick="saveHitLog()" class="btn-primary w-full">Save Session</button>
+    </div>
+
+    <!-- Bullpen Logger -->
+    <div id="log-bullpen" class="hidden">
+      <div class="card p-4 mb-4">
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">DATE</label>
+            <input type="date" id="bp-date" class="w-full mt-1 text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PITCH COUNT</label>
+            <input type="number" id="bp-count" placeholder="0" class="w-full mt-1 text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">AVG VELOCITY (mph)</label>
+            <input type="number" id="bp-avgvelo" placeholder="85" class="w-full mt-1 text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">MAX VELOCITY (mph)</label>
+            <input type="number" id="bp-maxvelo" placeholder="90" class="w-full mt-1 text-sm">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="font-barlow-condensed text-xs mb-2" style="color:var(--text-muted);">PITCH TYPES</div>
+          <div class="flex flex-wrap gap-2" id="pitchTypes">
+            <span class="pitch-tag" onclick="togglePitchTag(this)">FB</span>
+            <span class="pitch-tag" onclick="togglePitchTag(this)">SL</span>
+            <span class="pitch-tag" onclick="togglePitchTag(this)">CB</span>
+            <span class="pitch-tag" onclick="togglePitchTag(this)">CH</span>
+            <span class="pitch-tag" onclick="togglePitchTag(this)">CT</span>
+            <span class="pitch-tag" onclick="togglePitchTag(this)">2S</span>
+            <span class="pitch-tag" onclick="togglePitchTag(this)">SPL</span>
+            <span class="pitch-tag" onclick="togglePitchTag(this)">KN</span>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="flex justify-between mb-1">
+            <span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">EFFORT LEVEL</span>
+            <span class="font-barlow-condensed text-sm font-bold" id="effortLabel">70%</span>
+          </div>
+          <input type="range" id="bp-effort" min="10" max="100" step="5" value="70"
+            oninput="document.getElementById('effortLabel').textContent = this.value + '%'">
+        </div>
+
+        <textarea id="bp-notes" rows="2" class="w-full text-sm" placeholder="Session notes..."></textarea>
+      </div>
+      <button onclick="saveBullpenLog()" class="btn-primary w-full">Save Session</button>
+    </div>
+
+    <!-- History -->
+    <div id="log-history" class="hidden">
+      <div id="logHistory"></div>
+    </div>
+  </div>
+
+  <!-- ── NUTRITION ── -->
+  <div class="page" id="page-nutrition">
+    <div class="mb-4">
+      <p class="font-barlow-condensed text-sm" style="color: var(--text-muted);">FUEL YOUR GAME</p>
+      <h1 class="font-bebas text-4xl tracking-wide">Nutrition</h1>
+    </div>
+
+    <!-- Goal setter -->
+    <div class="card p-4 mb-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-barlow-condensed text-xs font-semibold" style="color:var(--text-muted);">DAILY MACRO GOALS</div>
+        <button onclick="toggleGoals()" class="font-barlow-condensed text-xs" style="color:var(--accent-orange);" id="goalsToggleBtn">Edit Goals</button>
+      </div>
+      <div id="goalsDisplay">
+        <div class="grid grid-cols-4 gap-2 text-center">
+          <div><div class="font-bebas text-2xl" style="color:var(--accent-orange);" id="goal-cal-display">0</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CAL</div></div>
+          <div><div class="font-bebas text-2xl" style="color:var(--accent-red);" id="goal-pro-display">0g</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PROTEIN</div></div>
+          <div><div class="font-bebas text-2xl" style="color:var(--accent-blue);" id="goal-carb-display">0g</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CARBS</div></div>
+          <div><div class="font-bebas text-2xl" style="color:var(--accent-purple);" id="goal-fat-display">0g</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">FAT</div></div>
+        </div>
+      </div>
+      <div id="goalsForm" class="hidden mt-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CALORIES</label><input type="number" id="goal-cal" class="w-full mt-1 text-sm" placeholder="3000"></div>
+          <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PROTEIN (g)</label><input type="number" id="goal-pro" class="w-full mt-1 text-sm" placeholder="200"></div>
+          <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CARBS (g)</label><input type="number" id="goal-carb" class="w-full mt-1 text-sm" placeholder="350"></div>
+          <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">FAT (g)</label><input type="number" id="goal-fat" class="w-full mt-1 text-sm" placeholder="100"></div>
+        </div>
+        <button onclick="saveGoals()" class="btn-primary w-full mt-3">Save Goals</button>
+      </div>
+    </div>
+
+    <!-- Today's progress -->
+    <div class="card p-4 mb-4">
+      <div class="flex justify-between items-center mb-3">
+        <div class="font-barlow-condensed text-xs font-semibold" style="color:var(--text-muted);">TODAY'S INTAKE</div>
+        <input type="date" id="nut-date" class="text-xs text-sm" style="padding:4px 8px;" onchange="renderNutrition()">
+      </div>
+      <div id="macroProgress"></div>
+    </div>
+
+    <!-- Log meal -->
+    <div class="card p-4 mb-4">
+      <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color:var(--text-muted);">LOG MEAL</div>
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <div class="col-span-2"><input type="text" id="meal-name" placeholder="Meal name..." class="w-full text-sm"></div>
+        <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CALORIES</label><input type="number" id="meal-cal" placeholder="0" class="w-full mt-1 text-sm"></div>
+        <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PROTEIN (g)</label><input type="number" id="meal-pro" placeholder="0" class="w-full mt-1 text-sm"></div>
+        <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CARBS (g)</label><input type="number" id="meal-carb" placeholder="0" class="w-full mt-1 text-sm"></div>
+        <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">FAT (g)</label><input type="number" id="meal-fat" placeholder="0" class="w-full mt-1 text-sm"></div>
+      </div>
+      <button onclick="logMeal()" class="btn-primary w-full">Add Meal</button>
+    </div>
+
+    <!-- Meal list -->
+    <div class="card p-4">
+      <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color:var(--text-muted);">MEAL LOG</div>
+      <div id="mealList"></div>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS ── -->
+  <div class="page" id="page-settings">
+    <div class="mb-4">
+      <p class="font-barlow-condensed text-sm" style="color: var(--text-muted);">YOUR PROFILE</p>
+      <h1 class="font-bebas text-4xl tracking-wide">Settings</h1>
+    </div>
+
+    <!-- Athlete Profile -->
+    <div class="card p-4 mb-4">
+      <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color:var(--text-muted);">ATHLETE PROFILE</div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">NAME</label>
+          <input type="text" id="s-name" placeholder="Your name..." class="w-full mt-1 text-sm">
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">AGE</label>
+          <input type="number" id="s-age" placeholder="22" class="w-full mt-1 text-sm">
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">POSITION</label>
+          <select id="s-position" class="w-full mt-1 text-sm">
+            <option value="">Select...</option>
+            <option>Pitcher</option>
+            <option>Catcher</option>
+            <option>First Base</option>
+            <option>Second Base</option>
+            <option>Third Base</option>
+            <option>Shortstop</option>
+            <option>Left Field</option>
+            <option>Center Field</option>
+            <option>Right Field</option>
+            <option>DH</option>
+            <option>Utility</option>
+          </select>
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">HEIGHT</label>
+          <div class="flex gap-1 mt-1">
+            <input type="number" id="s-height-ft" placeholder="6" class="w-1/2 text-sm" min="4" max="7">
+            <input type="number" id="s-height-in" placeholder="2" class="w-1/2 text-sm" min="0" max="11">
+          </div>
+          <div class="flex gap-1 mt-0.5">
+            <span class="font-barlow-condensed text-xs w-1/2 text-center" style="color:var(--text-muted);">ft</span>
+            <span class="font-barlow-condensed text-xs w-1/2 text-center" style="color:var(--text-muted);">in</span>
+          </div>
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">WEIGHT (lbs)</label>
+          <input type="number" id="s-weight" placeholder="195" class="w-full mt-1 text-sm">
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">THROWS</label>
+          <select id="s-throws" class="w-full mt-1 text-sm">
+            <option value="">—</option>
+            <option>Right</option>
+            <option>Left</option>
+          </select>
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">BATS</label>
+          <select id="s-bats" class="w-full mt-1 text-sm">
+            <option value="">—</option>
+            <option>Right</option>
+            <option>Left</option>
+            <option>Switch</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- BMI / TDEE display -->
+    <div class="card p-4 mb-4" id="s-stats-card" style="display:none;">
+      <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color:var(--text-muted);">CALCULATED STATS</div>
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div>
+          <div class="font-bebas text-2xl" style="color:var(--accent-orange);" id="s-bmi-val">—</div>
+          <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">BMI</div>
+        </div>
+        <div>
+          <div class="font-bebas text-2xl" style="color:var(--accent-green);" id="s-tdee-val">—</div>
+          <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">TDEE (cal)</div>
+        </div>
+        <div>
+          <div class="font-bebas text-2xl" style="color:var(--accent-blue);" id="s-bmi-cat">—</div>
+          <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">STATUS</div>
+        </div>
+      </div>
+      <div class="mt-3 p-2 rounded-lg" style="background:var(--bg-card3);">
+        <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">TDEE = estimated daily calories to maintain current weight based on age, height, weight, and moderate activity level.</div>
+      </div>
+    </div>
+
+    <!-- Macro Goals -->
+    <div class="card p-4 mb-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-barlow-condensed text-xs font-semibold" style="color:var(--text-muted);">MACRO GOALS</div>
+        <button onclick="autoCalcMacros()" class="font-barlow-condensed text-xs px-2 py-1 rounded" style="color:var(--accent-orange); border:1px solid rgba(249,115,22,0.3); background:rgba(249,115,22,0.08);">Auto-Calculate</button>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">DAILY CALORIES</label>
+          <input type="number" id="s-goal-cal" placeholder="3000" class="w-full mt-1 text-sm">
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PROTEIN (g)</label>
+          <input type="number" id="s-goal-pro" placeholder="200" class="w-full mt-1 text-sm">
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CARBS (g)</label>
+          <input type="number" id="s-goal-carb" placeholder="350" class="w-full mt-1 text-sm">
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">FAT (g)</label>
+          <input type="number" id="s-goal-fat" placeholder="100" class="w-full mt-1 text-sm">
+        </div>
+      </div>
+      <!-- Macro ratio bar -->
+      <div class="mb-1">
+        <div class="font-barlow-condensed text-xs mb-1" style="color:var(--text-muted);">MACRO SPLIT</div>
+        <div class="flex rounded overflow-hidden h-3" id="s-macro-split-bar">
+          <div class="h-full" style="background:var(--accent-red); width:33%;" id="s-split-pro"></div>
+          <div class="h-full" style="background:var(--accent-orange); width:34%;" id="s-split-carb"></div>
+          <div class="h-full" style="background:var(--accent-blue); width:33%;" id="s-split-fat"></div>
+        </div>
+        <div class="flex justify-between mt-1">
+          <span class="font-barlow-condensed text-xs" style="color:var(--accent-red);" id="s-split-pro-pct">—% P</span>
+          <span class="font-barlow-condensed text-xs" style="color:var(--accent-orange);" id="s-split-carb-pct">—% C</span>
+          <span class="font-barlow-condensed text-xs" style="color:var(--accent-blue);" id="s-split-fat-pct">—% F</span>
+        </div>
+      </div>
+    </div>
+
+    <button onclick="saveSettings()" class="btn-primary w-full mb-3">Save Settings</button>
+
+    <!-- Danger zone -->
+    <div class="card p-4" style="border-color: rgba(239,68,68,0.2);">
+      <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color:var(--accent-red);">DANGER ZONE</div>
+      <button onclick="resetAllData()" class="btn-secondary w-full" style="border-color:rgba(239,68,68,0.3); color:var(--accent-red);">Reset All Data</button>
+    </div>
+  </div>
+
+</div><!-- end main-content -->
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="flex">
+    <button class="nav-btn flex-1 py-3 flex flex-col items-center gap-0.5" data-page="dashboard" onclick="navigate('dashboard')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+      </svg>
+      <span class="font-barlow-condensed text-xs">Dashboard</span>
+    </button>
+    <button class="nav-btn flex-1 py-3 flex flex-col items-center gap-0.5" data-page="planner" onclick="navigate('planner')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      <span class="font-barlow-condensed text-xs">Planner</span>
+    </button>
+    <button class="nav-btn flex-1 py-3 flex flex-col items-center gap-0.5" data-page="workouts" onclick="navigate('workouts')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M6 4v16M18 4v16M2 8h4M18 8h4M2 16h4M18 16h4"/>
+      </svg>
+      <span class="font-barlow-condensed text-xs">Workouts</span>
+    </button>
+    <button class="nav-btn flex-1 py-3 flex flex-col items-center gap-0.5" data-page="log" onclick="navigate('log')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+      </svg>
+      <span class="font-barlow-condensed text-xs">Log</span>
+    </button>
+    <button class="nav-btn flex-1 py-3 flex flex-col items-center gap-0.5" data-page="nutrition" onclick="navigate('nutrition')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+        <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+      </svg>
+      <span class="font-barlow-condensed text-xs">Nutrition</span>
+    </button>
+    <button class="nav-btn flex-1 py-3 flex flex-col items-center gap-0.5" data-page="settings" onclick="navigate('settings')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      <span class="font-barlow-condensed text-xs">Settings</span>
+    </button>
+  </div>
+</nav>
+
+<!-- PLANNER DAY MODAL -->
+<div class="modal-overlay" id="dayModal">
+  <div class="modal-box p-5">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">ASSIGN SESSION</div>
+        <div class="font-bebas text-2xl" id="modalDayLabel"></div>
+      </div>
+      <button onclick="closeDayModal()" style="color:var(--text-muted);" class="text-2xl leading-none">&times;</button>
+    </div>
+    <div class="grid grid-cols-1 gap-2" id="sessionTypeButtons"></div>
+    <div class="mt-3">
+      <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">NOTES</label>
+      <textarea id="modalDayNotes" rows="2" class="w-full mt-1 text-sm" placeholder="Session notes..."></textarea>
+    </div>
+    <button onclick="assignDay()" class="btn-primary w-full mt-3">Assign</button>
+    <button onclick="clearDay()" class="btn-secondary w-full mt-2">Clear Day</button>
+  </div>
+</div>
+
+<!-- EXERCISE DETAIL MODAL -->
+<div class="modal-overlay" id="exModal">
+  <div class="modal-box p-5">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);" id="exModalCat"></div>
+        <div class="font-bebas text-2xl" id="exModalName"></div>
+      </div>
+      <button onclick="closeExModal()" style="color:var(--text-muted);" class="text-2xl leading-none">&times;</button>
+    </div>
+    <div id="exModalBody"></div>
+    <button onclick="addToBuilderFromModal()" class="btn-primary w-full mt-3">Add to Workout</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  DATA LAYER
+// ══════════════════════════════════════════════
+
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const SESSION_TYPES = [
+  { id: 'strength', label: 'Strength', color: 'accent-blue', dotClass: 'dot-strength', badgeClass: 'badge-strength' },
+  { id: 'hitting',  label: 'Hitting',  color: 'accent-green', dotClass: 'dot-hitting', badgeClass: 'badge-hitting' },
+  { id: 'bullpen',  label: 'Bullpen',  color: 'accent-red',  dotClass: 'dot-bullpen',  badgeClass: 'badge-bullpen' },
+  { id: 'recovery', label: 'Recovery', color: 'accent-purple', dotClass: 'dot-recovery', badgeClass: 'badge-recovery' },
+  { id: 'rest',     label: 'Rest Day', color: 'accent-gray',  dotClass: 'dot-rest',     badgeClass: 'badge-rest' },
+];
+
+// Exercise library is fully user-defined and stored in localStorage
+function getExercises() {
+  return JSON.parse(localStorage.getItem('df_exercises') || '[]');
+}
+function saveExercises(arr) {
+  localStorage.setItem('df_exercises', JSON.stringify(arr));
+}
+
+const EX_CATS = ['strength','power','rotational','shoulder','mobility','cardio','other'];
+const REST_OPTIONS = ['30s','45s','60s','90s','2min','3min','5min'];
+
+function loadData() {
+  return {
+    plan: JSON.parse(localStorage.getItem('df_plan') || '{}'),
+    logs: JSON.parse(localStorage.getItem('df_logs') || '[]'),
+    templates: JSON.parse(localStorage.getItem('df_templates') || '[]'),
+    nutrition: JSON.parse(localStorage.getItem('df_nutrition') || '[]'),
+    goals: JSON.parse(localStorage.getItem('df_goals') || JSON.stringify({ cal: 3000, pro: 200, carb: 350, fat: 100 })),
+  };
+}
+
+function saveData(key, val) {
+  localStorage.setItem('df_' + key, JSON.stringify(val));
+}
+
+// ══ SAMPLE DATA ══
+function seedSampleData() {
+  if (localStorage.getItem('df_seeded')) return;
+  const data = loadData();
+
+  // Seed week plan
+  const today = new Date();
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() - today.getDay());
+
+  const types = ['strength','hitting','strength','bullpen','recovery','hitting','rest'];
+  const notes = [
+    'Upper body focus - shoulder care',
+    'Cage work with coach',
+    'Lower body & core day',
+    '20 pitch pen, easy effort',
+    'Foam roll, bands, stretching',
+    'Front toss & tee work',
+    'Full rest - sleep and hydrate'
+  ];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate() + i);
+    const key = d.toISOString().split('T')[0];
+    data.plan[key] = { type: types[i], notes: notes[i] };
+  }
+
+  // Seed some logs
+  data.logs = [
+    {
+      type: 'lifting', date: fmtDate(addDays(today, -2)),
+      exercises: [
+        { name: 'Trap Bar Deadlift', sets: [{reps:5,wt:225},{reps:5,wt:235},{reps:5,wt:245},{reps:5,wt:255}] },
+        { name: 'Bulgarian Split Squat', sets: [{reps:8,wt:60},{reps:8,wt:60},{reps:8,wt:65}] },
+        { name: 'Romanian Deadlift', sets: [{reps:10,wt:155},{reps:10,wt:155},{reps:10,wt:165}] },
+      ],
+      notes: 'Felt strong. PR on deads.'
+    },
+    {
+      type: 'hitting', date: fmtDate(addDays(today, -1)),
+      swings: 120, avgVelo: 91, maxVelo: 103, hardHit: 42,
+      sessionType: 'Cage Work', notes: 'Working on staying back on offspeed'
+    },
+    {
+      type: 'bullpen', date: fmtDate(today),
+      pitchCount: 25, avgVelo: 86, maxVelo: 89,
+      pitchTypes: ['FB','SL','CH'], effort: 75,
+      notes: 'Focused on FB command to glove side'
+    },
+  ];
+
+  // Seed nutrition
+  const todayStr = fmtDate(today);
+  data.nutrition = [
+    { date: todayStr, name: 'Protein Shake + Banana', cal: 380, pro: 35, carb: 45, fat: 5 },
+    { date: todayStr, name: 'Chicken Rice Bowl', cal: 620, pro: 55, carb: 72, fat: 12 },
+    { date: todayStr, name: 'Greek Yogurt + Granola', cal: 290, pro: 18, carb: 38, fat: 7 },
+  ];
+
+  // Seed templates (empty — user builds their own from their library)
+  data.templates = [];
+
+  saveData('plan', data.plan);
+  saveData('logs', data.logs);
+  saveData('templates', data.templates);
+  saveData('nutrition', data.nutrition);
+  saveData('goals', data.goals);
+  localStorage.setItem('df_seeded', '1');
+}
+
+function fmtDate(d) { return d.toISOString().split('T')[0]; }
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+
+// ══════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════
+let currentPage = 'dashboard';
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    const isActive = b.dataset.page === page;
+    b.style.color = isActive ? 'var(--accent-orange)' : 'var(--text-muted)';
+  });
+  document.getElementById('page-' + page).classList.add('active');
+  currentPage = page;
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'planner')   renderPlanner();
+  if (page === 'workouts')  renderWorkouts();
+  if (page === 'log')       renderLog();
+  if (page === 'nutrition') renderNutrition();
+  if (page === 'settings')  renderSettings();
+}
+
+function quickStart(type) {
+  navigate('log');
+  setLogTab(type === 'recovery' ? 'lifting' : type, null);
+}
+
+// ══════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════
+function renderDashboard() {
+  const data = loadData();
+  const today = new Date();
+
+  // header date
+  document.getElementById('headerDate').textContent = DAYS[today.getDay()] + ' ' + MONTHS[today.getMonth()] + ' ' + today.getDate();
+
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() - today.getDay());
+  document.getElementById('weekLabel').textContent = MONTHS[sunday.getMonth()] + ' ' + sunday.getDate();
+
+  // Weekly log stats
+  const weekDates = [];
+  for (let i = 0; i < 7; i++) { const d = new Date(sunday); d.setDate(sunday.getDate()+i); weekDates.push(fmtDate(d)); }
+  const weekLogs = data.logs.filter(l => weekDates.includes(l.date));
+
+  const lifts = weekLogs.filter(l => l.type === 'lifting').length;
+  const swings = weekLogs.filter(l => l.type === 'hitting').reduce((a,b) => a+(b.swings||0),0);
+  const pitches = weekLogs.filter(l => l.type === 'bullpen').reduce((a,b) => a+(b.pitchCount||0),0);
+
+  document.getElementById('dashLifts').textContent = lifts;
+  document.getElementById('dashSwings').textContent = swings;
+  document.getElementById('dashPitches').textContent = pitches;
+
+  // Progress rings
+  const plannedSessions = weekDates.filter(d => data.plan[d] && data.plan[d].type !== 'rest').length;
+  const completedSessions = weekLogs.length;
+  const trainingPct = plannedSessions ? Math.min(1, completedSessions / plannedSessions) : 0;
+  setRing('ring-training', trainingPct, 'ring-training-pct');
+
+  const todayStr = fmtDate(today);
+  const todayMeals = data.nutrition.filter(m => m.date === todayStr);
+  const totalPro = todayMeals.reduce((a,m) => a+m.pro,0);
+  const totalCal = todayMeals.reduce((a,m) => a+m.cal,0);
+  const g = data.goals;
+  setRing('ring-protein', g.pro ? Math.min(1, totalPro/g.pro) : 0, 'ring-protein-pct');
+  setRing('ring-calories', g.cal ? Math.min(1, totalCal/g.cal) : 0, 'ring-calories-pct');
+
+  // Today's sessions
+  const todaySess = data.plan[todayStr];
+  const todaySessEl = document.getElementById('todaySessions');
+  if (todaySess) {
+    const st = SESSION_TYPES.find(s => s.id === todaySess.type);
+    todaySessEl.innerHTML = `
+      <div class="flex items-center gap-3 p-3 card2 rounded-lg">
+        <div class="w-3 h-3 rounded-full ${st.dotClass} flex-shrink-0"></div>
+        <div class="flex-1">
+          <div class="font-barlow-condensed font-bold text-sm">${st.label}</div>
+          <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${todaySess.notes || 'No notes'}</div>
+        </div>
+        <span class="font-barlow-condensed text-xs px-2 py-0.5 rounded ${st.badgeClass}">${st.label.toUpperCase()}</span>
+      </div>`;
+  } else {
+    todaySessEl.innerHTML = `<div class="font-barlow-condensed text-sm" style="color:var(--text-muted);">No session planned. <button onclick="navigate('planner')" style="color:var(--accent-orange);">Add one →</button></div>`;
+  }
+
+  // Recent logs
+  const recentEl = document.getElementById('recentLogs');
+  const recent = [...data.logs].sort((a,b) => b.date.localeCompare(a.date)).slice(0,5);
+  if (!recent.length) { recentEl.innerHTML = `<div class="font-barlow-condensed text-sm" style="color:var(--text-muted);">No sessions logged yet.</div>`; return; }
+  recentEl.innerHTML = recent.map(l => {
+    const st = SESSION_TYPES.find(s => s.id === l.type) || SESSION_TYPES[4];
+    let detail = '';
+    if (l.type === 'lifting') detail = `${l.exercises?.length || 0} exercises`;
+    if (l.type === 'hitting') detail = `${l.swings} swings · max ${l.maxVelo} mph`;
+    if (l.type === 'bullpen') detail = `${l.pitchCount} pitches · max ${l.maxVelo} mph`;
+    return `<div class="flex items-center gap-3 py-2 border-b" style="border-color:var(--border);">
+      <div class="w-2 h-2 rounded-full ${st.dotClass} flex-shrink-0"></div>
+      <div class="flex-1">
+        <div class="font-barlow-condensed font-bold text-sm">${st.label}</div>
+        <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${detail}</div>
+      </div>
+      <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${l.date}</div>
+    </div>`;
+  }).join('');
+}
+
+function setRing(id, pct, pctId) {
+  const circ = 188.5;
+  const el = document.getElementById(id);
+  el.style.strokeDashoffset = circ - pct * circ;
+  document.getElementById(pctId).textContent = Math.round(pct * 100) + '%';
+}
+
+// ══════════════════════════════════════════════
+//  PLANNER
+// ══════════════════════════════════════════════
+let modalDay = null;
+let selectedSessionType = null;
+
+function renderPlanner() {
+  const data = loadData();
+  const today = new Date();
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() - today.getDay());
+
+  const grid = document.getElementById('weekGrid');
+  grid.innerHTML = '';
+
+  let counts = { strength:0, hitting:0, bullpen:0, recovery:0 };
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate() + i);
+    const key = fmtDate(d);
+    const isToday = key === fmtDate(today);
+    const plan = data.plan[key];
+    const st = plan ? SESSION_TYPES.find(s => s.id === plan.type) : null;
+    if (st && counts[st.id] !== undefined) counts[st.id]++;
+
+    const cell = document.createElement('div');
+    cell.className = 'day-cell p-1.5' + (isToday ? ' today' : '');
+    cell.onclick = () => openDayModal(key, d);
+    cell.innerHTML = `
+      <div class="font-barlow-condensed text-xs font-semibold mb-1" style="color:${isToday ? 'var(--accent-orange)' : 'var(--text-muted)'};">${DAYS[d.getDay()]}</div>
+      <div class="font-barlow-condensed font-bold text-sm" style="color:${isToday ? 'var(--accent-orange)' : 'var(--text-primary)'};">${d.getDate()}</div>
+      ${st ? `<div class="mt-1 w-2 h-2 rounded-full ${st.dotClass}"></div>
+      <div class="font-barlow-condensed text-xs mt-0.5 leading-tight" style="color:var(--text-secondary);font-size:10px;">${st.label}</div>` : ''}
+    `;
+    grid.appendChild(cell);
+  }
+
+  document.getElementById('plan-lifts').textContent = counts.strength;
+  document.getElementById('plan-hitting').textContent = counts.hitting;
+  document.getElementById('plan-bullpen').textContent = counts.bullpen;
+  document.getElementById('plan-recovery').textContent = counts.recovery;
+}
+
+function openDayModal(key, date) {
+  modalDay = key;
+  selectedSessionType = null;
+  const data = loadData();
+  document.getElementById('modalDayLabel').textContent = DAYS[date.getDay()] + ', ' + MONTHS[date.getMonth()] + ' ' + date.getDate();
+  document.getElementById('modalDayNotes').value = data.plan[key]?.notes || '';
+
+  const btns = document.getElementById('sessionTypeButtons');
+  btns.innerHTML = SESSION_TYPES.map(st => `
+    <button onclick="selectSessionType('${st.id}', this)"
+      class="flex items-center gap-3 p-3 rounded-lg border transition-all w-full text-left"
+      style="background:var(--bg-card2); border-color: var(--border);">
+      <div class="w-3 h-3 rounded-full ${st.dotClass} flex-shrink-0"></div>
+      <span class="font-barlow-condensed font-bold text-sm">${st.label}</span>
+      ${data.plan[key]?.type === st.id ? '<span class="ml-auto font-barlow-condensed text-xs" style="color:var(--accent-orange);">CURRENT</span>' : ''}
+    </button>
+  `).join('');
+
+  if (data.plan[key]) selectedSessionType = data.plan[key].type;
+  document.getElementById('dayModal').classList.add('open');
+}
+
+function selectSessionType(id, el) {
+  selectedSessionType = id;
+  document.querySelectorAll('#sessionTypeButtons button').forEach(b => b.style.borderColor = 'var(--border)');
+  el.style.borderColor = 'var(--accent-orange)';
+}
+
+function assignDay() {
+  if (!selectedSessionType) { showToast('Select a session type'); return; }
+  const data = loadData();
+  data.plan[modalDay] = { type: selectedSessionType, notes: document.getElementById('modalDayNotes').value };
+  saveData('plan', data.plan);
+  closeDayModal();
+  renderPlanner();
+  showToast('Session assigned ✓');
+}
+
+function clearDay() {
+  const data = loadData();
+  delete data.plan[modalDay];
+  saveData('plan', data.plan);
+  closeDayModal();
+  renderPlanner();
+  showToast('Day cleared');
+}
+
+function closeDayModal() { document.getElementById('dayModal').classList.remove('open'); }
+
+function setPhase(el) {
+  document.querySelectorAll('[data-phase]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ══════════════════════════════════════════════
+//  WORKOUTS
+// ══════════════════════════════════════════════
+let currentExCat = 'all';
+let selectedExercise = null;
+let builderExercises = [];
+
+function renderWorkouts() {
+  renderLibrary();
+  renderTemplates();
+  populateLiftTemplates();
+}
+
+function setWorkoutTab(tab, el) {
+  ['library','builder','templates'].forEach(t => {
+    document.getElementById('workout-' + t).classList.toggle('hidden', t !== tab);
+  });
+  document.querySelectorAll('#page-workouts .tab-pill').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  if (tab === 'templates') renderTemplates();
+}
+
+function setExCat(el) {
+  document.querySelectorAll('[data-cat]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentExCat = el.dataset.cat;
+  renderLibrary();
+}
+
+function addExerciseToLibrary() {
+  const name = document.getElementById('new-ex-name').value.trim();
+  if (!name) { showToast('Enter an exercise name'); return; }
+  const exercises = getExercises();
+  exercises.push({
+    id: Date.now(),
+    name,
+    cat:     document.getElementById('new-ex-cat').value,
+    muscles: document.getElementById('new-ex-muscles').value.trim(),
+    sets:    +document.getElementById('new-ex-sets').value   || 3,
+    reps:    +document.getElementById('new-ex-reps').value   || 10,
+    rest:    document.getElementById('new-ex-rest').value    || '60s',
+    weight:  +document.getElementById('new-ex-weight').value || 0,
+    notes:   document.getElementById('new-ex-notes').value.trim(),
+  });
+  saveExercises(exercises);
+  // clear form
+  ['new-ex-name','new-ex-muscles','new-ex-notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('new-ex-sets').value   = '';
+  document.getElementById('new-ex-reps').value   = '';
+  document.getElementById('new-ex-weight').value = '';
+  document.getElementById('new-ex-rest').value   = '60s';
+  renderLibrary();
+  showToast(name + ' added to library ✓');
+}
+
+function renderLibrary() {
+  const exercises = getExercises();
+  const search = (document.getElementById('exerciseSearch')?.value || '').toLowerCase();
+  const filtered = exercises.filter(e =>
+    (currentExCat === 'all' || e.cat === currentExCat) &&
+    e.name.toLowerCase().includes(search)
+  );
+  const list = document.getElementById('exerciseList');
+  if (!exercises.length) {
+    list.innerHTML = `<div class="font-barlow-condensed text-sm p-2" style="color:var(--text-muted);">Your library is empty. Add your first exercise above.</div>`;
+    return;
+  }
+  if (!filtered.length) {
+    list.innerHTML = `<div class="font-barlow-condensed text-sm p-2" style="color:var(--text-muted);">No exercises match.</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(ex => `
+    <div class="exercise-item" onclick="openExModal(${ex.id})">
+      <div class="flex-1">
+        <div class="font-barlow-condensed font-bold text-sm">${ex.name}</div>
+        <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">
+          ${ex.cat.charAt(0).toUpperCase()+ex.cat.slice(1)}${ex.muscles ? ' · ' + ex.muscles : ''}
+        </div>
+      </div>
+      <div class="font-barlow-condensed text-xs mr-1" style="color:var(--text-secondary);">${ex.sets}×${ex.reps} · ${ex.rest}</div>
+      <svg width="14" height="14" fill="none" stroke="var(--text-muted)" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  `).join('');
+}
+
+let currentExId = null;
+function openExModal(id) {
+  const ex = getExercises().find(e => e.id === id);
+  if (!ex) return;
+  currentExId = id;
+  document.getElementById('exModalCat').textContent = ex.cat.toUpperCase() + (ex.muscles ? ' · ' + ex.muscles : '');
+  document.getElementById('exModalName').textContent = ex.name;
+  document.getElementById('exModalBody').innerHTML = `
+    <div class="grid grid-cols-3 gap-3 mb-4 text-center">
+      <div class="card2 p-3"><div class="font-bebas text-2xl" style="color:var(--accent-orange);">${ex.sets}</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">SETS</div></div>
+      <div class="card2 p-3"><div class="font-bebas text-2xl" style="color:var(--accent-orange);">${ex.reps}</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">REPS</div></div>
+      <div class="card2 p-3"><div class="font-bebas text-2xl" style="color:var(--accent-orange);">${ex.rest}</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">REST</div></div>
+    </div>
+    ${ex.weight ? `<div class="card2 p-3 mb-3 flex justify-between items-center"><span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">DEFAULT WEIGHT</span><span class="font-barlow-condensed font-bold text-sm">${ex.weight} lb</span></div>` : ''}
+    ${ex.notes ? `<div class="card2 p-3 mb-3"><div class="font-barlow-condensed text-xs mb-1" style="color:var(--text-muted);">NOTES</div><div class="font-barlow-condensed text-sm">${ex.notes}</div></div>` : ''}
+    <button onclick="deleteExerciseFromLibrary(${id})" class="w-full font-barlow-condensed text-xs py-2 rounded-lg" style="color:var(--accent-red); border:1px solid rgba(239,68,68,0.2);">Delete from Library</button>
+  `;
+  document.getElementById('exModal').classList.add('open');
+}
+
+function deleteExerciseFromLibrary(id) {
+  const exercises = getExercises().filter(e => e.id !== id);
+  saveExercises(exercises);
+  closeExModal();
+  renderLibrary();
+  showToast('Exercise deleted');
+}
+
+function closeExModal() { document.getElementById('exModal').classList.remove('open'); }
+
+function addToBuilderFromModal() {
+  if (currentExId === null) return;
+  const ex = getExercises().find(e => e.id === currentExId);
+  if (!ex) return;
+  builderExercises.push({ name: ex.name, cat: ex.cat, sets: ex.sets, reps: ex.reps, rest: ex.rest, weight: ex.weight || 0 });
+  setWorkoutTab('builder', null);
+  document.querySelectorAll('#page-workouts .tab-pill')[1].classList.add('active');
+  document.querySelectorAll('#page-workouts .tab-pill')[0].classList.remove('active');
+  renderBuilderExercises();
+  closeExModal();
+  showToast(ex.name + ' added to workout');
+}
+
+function addExerciseToBuilder() {
+  builderExercises.push({ name: '', cat: 'strength', sets: 3, reps: 10, rest: '90s', weight: 0 });
+  renderBuilderExercises();
+}
+
+function renderBuilderExercises() {
+  const el = document.getElementById('builderExercises');
+  if (!builderExercises.length) {
+    el.innerHTML = `<div class="font-barlow-condensed text-sm mb-3" style="color:var(--text-muted);">No exercises yet. Add from the Library or use the button below.</div>`;
+    return;
+  }
+  el.innerHTML = builderExercises.map((ex, i) => `
+    <div class="card p-3 mb-2">
+      <div class="flex items-center gap-2 mb-2">
+        <input type="text" value="${ex.name}" placeholder="Exercise name..." class="font-barlow-condensed font-bold text-sm bg-transparent border-none p-0 flex-1"
+          style="outline:none; border-bottom:1px solid var(--border2);" onchange="builderExercises[${i}].name=this.value">
+        <button onclick="builderExercises.splice(${i},1);renderBuilderExercises()" style="color:var(--accent-red); flex-shrink:0;" class="text-xl leading-none">×</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">TYPE</label>
+          <select class="w-full mt-1 text-sm" onchange="builderExercises[${i}].cat=this.value">
+            ${EX_CATS.map(c => `<option value="${c}" ${ex.cat===c?'selected':''}>${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">REST</label>
+          <select class="w-full mt-1 text-sm" onchange="builderExercises[${i}].rest=this.value">
+            ${REST_OPTIONS.map(r => `<option value="${r}" ${ex.rest===r?'selected':''}>${r}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">SETS</label>
+          <input type="number" value="${ex.sets}" min="1" class="w-full mt-1 text-sm" onchange="builderExercises[${i}].sets=+this.value">
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">REPS</label>
+          <input type="number" value="${ex.reps}" min="1" class="w-full mt-1 text-sm" onchange="builderExercises[${i}].reps=+this.value">
+        </div>
+        <div class="col-span-2">
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">DEFAULT WEIGHT (lb, optional)</label>
+          <input type="number" value="${ex.weight}" min="0" placeholder="0" class="w-full mt-1 text-sm" onchange="builderExercises[${i}].weight=+this.value">
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function saveWorkoutTemplate() {
+  const name = document.getElementById('wb-name').value;
+  if (!name) { showToast('Add a workout name'); return; }
+  const data = loadData();
+  data.templates.push({
+    name,
+    phase: document.getElementById('wb-phase').value,
+    type: document.getElementById('wb-type').value,
+    exercises: [...builderExercises],
+  });
+  saveData('templates', data.templates);
+  builderExercises = [];
+  document.getElementById('wb-name').value = '';
+  renderBuilderExercises();
+  renderTemplates();
+  showToast('Template saved ✓');
+}
+
+function renderTemplates() {
+  const data = loadData();
+  const el = document.getElementById('templatesList');
+  if (!data.templates.length) {
+    el.innerHTML = `<div class="font-barlow-condensed text-sm" style="color:var(--text-muted);">No templates yet. Build one in the Builder tab.</div>`;
+    return;
+  }
+  el.innerHTML = data.templates.map((t, i) => {
+    const st = SESSION_TYPES.find(s => s.id === t.type) || SESSION_TYPES[0];
+    return `<div class="card p-4 mb-3">
+      <div class="flex items-center justify-between mb-2">
+        <div>
+          <div class="font-barlow-condensed font-bold">${t.name}</div>
+          <div class="flex gap-2 mt-1">
+            <span class="font-barlow-condensed text-xs px-2 py-0.5 rounded ${st.badgeClass}">${st.label}</span>
+            <span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${t.phase}</span>
+          </div>
+        </div>
+        <button onclick="deleteTemplate(${i})" style="color:var(--accent-red);" class="text-sm font-barlow-condensed">Delete</button>
+      </div>
+      <div class="space-y-1">
+        ${t.exercises.map(e => `<div class="font-barlow-condensed text-xs" style="color:var(--text-secondary);">· ${e.name} — ${e.sets}×${e.reps}${e.weight ? ' @ '+e.weight+'lb' : ''} · rest ${e.rest||'90s'}</div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteTemplate(i) {
+  const data = loadData();
+  data.templates.splice(i, 1);
+  saveData('templates', data.templates);
+  renderTemplates();
+  showToast('Template deleted');
+}
+
+// ══════════════════════════════════════════════
+//  LOG
+// ══════════════════════════════════════════════
+let liftExercises = [];
+
+function renderLog() {
+  document.getElementById('lift-date').value = fmtDate(new Date());
+  document.getElementById('hit-date').value = fmtDate(new Date());
+  document.getElementById('bp-date').value = fmtDate(new Date());
+  document.getElementById('nut-date').value = fmtDate(new Date());
+  populateLiftTemplates();
+  renderLogHistory();
+
+  document.getElementById('hit-maxvelo').addEventListener('input', function() {
+    document.getElementById('veloDisplay').textContent = this.value || '—';
+  });
+}
+
+function setLogTab(tab, el) {
+  const tabs = ['lifting','hitting','bullpen','history'];
+  tabs.forEach(t => {
+    const el2 = document.getElementById('log-' + t);
+    if (el2) el2.classList.toggle('hidden', t !== tab);
+  });
+  document.querySelectorAll('#page-log .tab-pill').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  else {
+    const idx = tabs.indexOf(tab);
+    document.querySelectorAll('#page-log .tab-pill')[idx]?.classList.add('active');
+  }
+  if (tab === 'history') renderLogHistory();
+}
+
+function populateLiftTemplates() {
+  const data = loadData();
+  const sel = document.getElementById('lift-template');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Custom</option>' +
+    data.templates.map((t,i) => `<option value="${i}">${t.name}</option>`).join('');
+}
+
+function loadLiftTemplate() {
+  const data = loadData();
+  const idx = +document.getElementById('lift-template').value;
+  if (!data.templates[idx]) { liftExercises = []; renderLiftExercises(); return; }
+  const t = data.templates[idx];
+  liftExercises = t.exercises.map(e => ({
+    name: e.name,
+    sets: Array.from({length: e.sets}, () => ({ reps: e.reps, wt: e.weight, done: false }))
+  }));
+  renderLiftExercises();
+}
+
+function addLiftExercise() {
+  liftExercises.push({ name: 'Exercise', sets: [{ reps: 10, wt: 0, done: false }] });
+  renderLiftExercises();
+}
+
+function renderLiftExercises() {
+  const el = document.getElementById('liftExercises');
+  el.innerHTML = liftExercises.map((ex, ei) => `
+    <div class="card p-3 mb-3">
+      <div class="flex items-center justify-between mb-2">
+        <input type="text" value="${ex.name}" class="font-barlow-condensed font-bold text-sm bg-transparent border-none p-0 flex-1"
+          style="outline:none;" onchange="liftExercises[${ei}].name=this.value">
+        <button onclick="liftExercises.splice(${ei},1);renderLiftExercises()" style="color:var(--text-muted);" class="text-xl leading-none">×</button>
+      </div>
+      <div class="flex gap-2 mb-2">
+        <div class="font-barlow-condensed text-xs w-8 text-center" style="color:var(--text-muted);">SET</div>
+        <div class="font-barlow-condensed text-xs flex-1" style="color:var(--text-muted);">REPS</div>
+        <div class="font-barlow-condensed text-xs flex-1" style="color:var(--text-muted);">WEIGHT</div>
+        <div class="w-8"></div>
+      </div>
+      ${ex.sets.map((s, si) => `
+        <div class="set-row">
+          <div class="set-num">${si+1}</div>
+          <input type="number" value="${s.reps}" class="flex-1 text-sm" onchange="liftExercises[${ei}].sets[${si}].reps=+this.value">
+          <input type="number" value="${s.wt}" class="flex-1 text-sm" placeholder="lb" onchange="liftExercises[${ei}].sets[${si}].wt=+this.value">
+          <div class="set-check ${s.done ? 'done' : ''}" onclick="toggleSet(${ei},${si})">
+            ${s.done ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+          </div>
+        </div>
+      `).join('')}
+      <button onclick="addSet(${ei})" class="font-barlow-condensed text-xs mt-1" style="color:var(--accent-orange);">+ Add Set</button>
+    </div>
+  `).join('');
+}
+
+function toggleSet(ei, si) {
+  liftExercises[ei].sets[si].done = !liftExercises[ei].sets[si].done;
+  renderLiftExercises();
+}
+
+function addSet(ei) {
+  const lastSet = liftExercises[ei].sets.slice(-1)[0];
+  liftExercises[ei].sets.push({ reps: lastSet?.reps || 10, wt: lastSet?.wt || 0, done: false });
+  renderLiftExercises();
+}
+
+function saveLiftLog() {
+  if (!liftExercises.length) { showToast('Add at least one exercise'); return; }
+  const data = loadData();
+  data.logs.push({
+    type: 'lifting',
+    date: document.getElementById('lift-date').value,
+    exercises: liftExercises.map(e => ({ name: e.name, sets: e.sets.map(s => ({ reps: s.reps, wt: s.wt })) })),
+    notes: document.getElementById('lift-notes').value,
+  });
+  saveData('logs', data.logs);
+  liftExercises = [];
+  renderLiftExercises();
+  document.getElementById('lift-notes').value = '';
+  showToast('Lifting session saved ✓');
+}
+
+function saveHitLog() {
+  const swings = +document.getElementById('hit-swings').value;
+  if (!swings) { showToast('Enter swing count'); return; }
+  const data = loadData();
+  data.logs.push({
+    type: 'hitting',
+    date: document.getElementById('hit-date').value,
+    sessionType: document.getElementById('hit-type').value,
+    swings,
+    avgVelo: +document.getElementById('hit-avgvelo').value,
+    maxVelo: +document.getElementById('hit-maxvelo').value,
+    hardHit: +document.getElementById('hit-hardhit').value,
+    notes: document.getElementById('hit-notes').value,
+  });
+  saveData('logs', data.logs);
+  document.getElementById('hit-swings').value = '';
+  document.getElementById('hit-avgvelo').value = '';
+  document.getElementById('hit-maxvelo').value = '';
+  document.getElementById('hit-hardhit').value = '';
+  document.getElementById('hit-notes').value = '';
+  document.getElementById('veloDisplay').textContent = '—';
+  showToast('Hitting session saved ✓');
+}
+
+function togglePitchTag(el) { el.classList.toggle('active'); }
+
+function saveBullpenLog() {
+  const pitchCount = +document.getElementById('bp-count').value;
+  if (!pitchCount) { showToast('Enter pitch count'); return; }
+  const data = loadData();
+  const pitchTypes = [...document.querySelectorAll('.pitch-tag.active')].map(e => e.textContent);
+  data.logs.push({
+    type: 'bullpen',
+    date: document.getElementById('bp-date').value,
+    pitchCount,
+    avgVelo: +document.getElementById('bp-avgvelo').value,
+    maxVelo: +document.getElementById('bp-maxvelo').value,
+    pitchTypes,
+    effort: +document.getElementById('bp-effort').value,
+    notes: document.getElementById('bp-notes').value,
+  });
+  saveData('logs', data.logs);
+  document.getElementById('bp-count').value = '';
+  document.getElementById('bp-avgvelo').value = '';
+  document.getElementById('bp-maxvelo').value = '';
+  document.querySelectorAll('.pitch-tag.active').forEach(e => e.classList.remove('active'));
+  document.getElementById('bp-effort').value = 70;
+  document.getElementById('effortLabel').textContent = '70%';
+  document.getElementById('bp-notes').value = '';
+  showToast('Bullpen session saved ✓');
+}
+
+function renderLogHistory() {
+  const data = loadData();
+  const el = document.getElementById('logHistory');
+  if (!data.logs.length) { el.innerHTML = `<div class="font-barlow-condensed text-sm" style="color:var(--text-muted);">No sessions logged yet.</div>`; return; }
+  const sorted = [...data.logs].sort((a,b) => b.date.localeCompare(a.date));
+  el.innerHTML = sorted.map((l, i) => {
+    const st = SESSION_TYPES.find(s => s.id === l.type) || SESSION_TYPES[0];
+    let detail = '';
+    if (l.type === 'lifting') {
+      const totalSets = l.exercises.reduce((a,e) => a+(e.sets?.length||0), 0);
+      detail = `${l.exercises.length} exercises · ${totalSets} sets`;
+    }
+    if (l.type === 'hitting') detail = `${l.swings} swings · avg ${l.avgVelo}mph · max ${l.maxVelo}mph`;
+    if (l.type === 'bullpen') detail = `${l.pitchCount} pitches · avg ${l.avgVelo}mph · max ${l.maxVelo}mph · ${l.effort}% effort`;
+    return `<div class="card p-3 mb-3">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-3 h-3 rounded-full ${st.dotClass}"></div>
+        <div class="flex-1">
+          <div class="font-barlow-condensed font-bold text-sm">${st.label}</div>
+          <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${l.date}</div>
+        </div>
+        <button onclick="deleteLog(${data.logs.indexOf(l)})" style="color:var(--text-muted);" class="font-barlow-condensed text-xs">Delete</button>
+      </div>
+      <div class="font-barlow-condensed text-xs mb-1" style="color:var(--text-secondary);">${detail}</div>
+      ${l.notes ? `<div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${l.notes}</div>` : ''}
+      ${l.type === 'lifting' && l.exercises ? `
+        <div class="mt-2">
+          ${l.exercises.map(e => `<div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">· ${e.name} ${e.sets.map(s=>`${s.reps}@${s.wt}lb`).join(', ')}</div>`).join('')}
+        </div>` : ''}
+      ${l.type === 'bullpen' && l.pitchTypes?.length ? `<div class="flex gap-1 mt-2 flex-wrap">${l.pitchTypes.map(p=>`<span class="pitch-tag active">${p}</span>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function deleteLog(i) {
+  const data = loadData();
+  data.logs.splice(i, 1);
+  saveData('logs', data.logs);
+  renderLogHistory();
+  showToast('Log deleted');
+}
+
+// ══════════════════════════════════════════════
+//  NUTRITION
+// ══════════════════════════════════════════════
+let goalsOpen = false;
+
+function renderNutrition() {
+  const data = loadData();
+  const g = data.goals;
+
+  document.getElementById('goal-cal-display').textContent = g.cal;
+  document.getElementById('goal-pro-display').textContent = g.pro + 'g';
+  document.getElementById('goal-carb-display').textContent = g.carb + 'g';
+  document.getElementById('goal-fat-display').textContent = g.fat + 'g';
+
+  document.getElementById('goal-cal').value = g.cal;
+  document.getElementById('goal-pro').value = g.pro;
+  document.getElementById('goal-carb').value = g.carb;
+  document.getElementById('goal-fat').value = g.fat;
+
+  const dateStr = document.getElementById('nut-date').value || fmtDate(new Date());
+  const meals = data.nutrition.filter(m => m.date === dateStr);
+
+  const totals = meals.reduce((a,m) => ({
+    cal: a.cal+m.cal, pro: a.pro+m.pro, carb: a.carb+m.carb, fat: a.fat+m.fat
+  }), {cal:0,pro:0,carb:0,fat:0});
+
+  const mp = document.getElementById('macroProgress');
+  mp.innerHTML = `
+    <div class="grid grid-cols-4 gap-2 text-center mb-4">
+      <div><div class="font-bebas text-2xl" style="color:var(--accent-orange);">${totals.cal}</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">/ ${g.cal} CAL</div></div>
+      <div><div class="font-bebas text-2xl" style="color:var(--accent-red);">${totals.pro}g</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">/ ${g.pro}g PRO</div></div>
+      <div><div class="font-bebas text-2xl" style="color:var(--accent-blue);">${totals.carb}g</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">/ ${g.carb}g CARB</div></div>
+      <div><div class="font-bebas text-2xl" style="color:var(--accent-purple);">${totals.fat}g</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">/ ${g.fat}g FAT</div></div>
+    </div>
+    ${macroBar('Calories', totals.cal, g.cal, 'protein-fill')}
+    ${macroBar('Protein', totals.pro, g.pro, 'protein-fill')}
+    ${macroBar('Carbs', totals.carb, g.carb, 'carb-fill')}
+    ${macroBar('Fat', totals.fat, g.fat, 'fat-fill')}
+  `;
+
+  const mealEl = document.getElementById('mealList');
+  if (!meals.length) {
+    mealEl.innerHTML = `<div class="font-barlow-condensed text-sm" style="color:var(--text-muted);">No meals logged for this day.</div>`;
+    return;
+  }
+  mealEl.innerHTML = meals.map((m, i) => `
+    <div class="flex items-center gap-3 py-2 border-b" style="border-color:var(--border);">
+      <div class="flex-1">
+        <div class="font-barlow-condensed font-bold text-sm">${m.name}</div>
+        <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${m.cal}cal · P:${m.pro}g C:${m.carb}g F:${m.fat}g</div>
+      </div>
+      <button onclick="deleteMeal('${dateStr}', ${i})" style="color:var(--text-muted);" class="font-barlow-condensed text-xs">×</button>
+    </div>
+  `).join('');
+}
+
+function macroBar(label, val, max, cls) {
+  const pct = max ? Math.min(100, Math.round(val/max*100)) : 0;
+  return `<div class="mb-3">
+    <div class="flex justify-between mb-1">
+      <span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${label.toUpperCase()}</span>
+      <span class="font-barlow-condensed text-xs" style="color:var(--text-secondary);">${pct}%</span>
+    </div>
+    <div class="macro-bar"><div class="macro-fill ${cls}" style="width:${pct}%"></div></div>
+  </div>`;
+}
+
+function toggleGoals() {
+  goalsOpen = !goalsOpen;
+  document.getElementById('goalsForm').classList.toggle('hidden', !goalsOpen);
+  document.getElementById('goalsDisplay').classList.toggle('hidden', goalsOpen);
+  document.getElementById('goalsToggleBtn').textContent = goalsOpen ? 'Cancel' : 'Edit Goals';
+}
+
+function saveGoals() {
+  const data = loadData();
+  data.goals = {
+    cal: +document.getElementById('goal-cal').value || 3000,
+    pro: +document.getElementById('goal-pro').value || 200,
+    carb: +document.getElementById('goal-carb').value || 350,
+    fat: +document.getElementById('goal-fat').value || 100,
+  };
+  saveData('goals', data.goals);
+  goalsOpen = false;
+  toggleGoals();
+  renderNutrition();
+  showToast('Goals saved ✓');
+}
+
+function logMeal() {
+  const name = document.getElementById('meal-name').value;
+  if (!name) { showToast('Enter meal name'); return; }
+  const data = loadData();
+  const dateStr = document.getElementById('nut-date').value || fmtDate(new Date());
+  data.nutrition.push({
+    date: dateStr,
+    name,
+    cal: +document.getElementById('meal-cal').value || 0,
+    pro: +document.getElementById('meal-pro').value || 0,
+    carb: +document.getElementById('meal-carb').value || 0,
+    fat: +document.getElementById('meal-fat').value || 0,
+  });
+  saveData('nutrition', data.nutrition);
+  ['meal-name','meal-cal','meal-pro','meal-carb','meal-fat'].forEach(id => document.getElementById(id).value = '');
+  renderNutrition();
+  showToast('Meal logged ✓');
+}
+
+function deleteMeal(dateStr, idx) {
+  const data = loadData();
+  const dayMeals = data.nutrition.filter(m => m.date === dateStr);
+  const allIdx = data.nutrition.indexOf(dayMeals[idx]);
+  if (allIdx > -1) data.nutrition.splice(allIdx, 1);
+  saveData('nutrition', data.nutrition);
+  renderNutrition();
+  showToast('Meal removed');
+}
+
+// ══════════════════════════════════════════════
+//  EXPORT
+// ══════════════════════════════════════════════
+function exportData() {
+  const data = loadData();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'diamondforge-' + fmtDate(new Date()) + '.json';
+  a.click();
+  showToast('Data exported ✓');
+}
+
+// ══════════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════════
+function renderSettings() {
+  const profile = JSON.parse(localStorage.getItem('df_profile') || '{}');
+  const data = loadData();
+  const g = data.goals;
+
+  if (profile.name)       document.getElementById('s-name').value = profile.name;
+  if (profile.age)        document.getElementById('s-age').value = profile.age;
+  if (profile.position)   document.getElementById('s-position').value = profile.position;
+  if (profile.heightFt)   document.getElementById('s-height-ft').value = profile.heightFt;
+  if (profile.heightIn !== undefined) document.getElementById('s-height-in').value = profile.heightIn;
+  if (profile.weight)     document.getElementById('s-weight').value = profile.weight;
+  if (profile.throws)     document.getElementById('s-throws').value = profile.throws;
+  if (profile.bats)       document.getElementById('s-bats').value = profile.bats;
+
+  document.getElementById('s-goal-cal').value  = g.cal;
+  document.getElementById('s-goal-pro').value  = g.pro;
+  document.getElementById('s-goal-carb').value = g.carb;
+  document.getElementById('s-goal-fat').value  = g.fat;
+
+  updateCalcStats(profile, g);
+  updateMacroSplitBar(g);
+
+  // Live macro split update
+  ['s-goal-cal','s-goal-pro','s-goal-carb','s-goal-fat'].forEach(id => {
+    document.getElementById(id).oninput = () => {
+      updateMacroSplitBar({
+        cal:  +document.getElementById('s-goal-cal').value,
+        pro:  +document.getElementById('s-goal-pro').value,
+        carb: +document.getElementById('s-goal-carb').value,
+        fat:  +document.getElementById('s-goal-fat').value,
+      });
+    };
+  });
+}
+
+function updateCalcStats(profile, goals) {
+  const card = document.getElementById('s-stats-card');
+  const ft = +profile.heightFt || 0;
+  const ins = +profile.heightIn || 0;
+  const wt = +profile.weight || 0;
+  const age = +profile.age || 0;
+  if (!ft || !wt || !age) { card.style.display = 'none'; return; }
+
+  const totalInches = ft * 12 + ins;
+  const heightCm = totalInches * 2.54;
+  const weightKg = wt * 0.453592;
+
+  // BMI
+  const bmi = weightKg / ((heightCm / 100) ** 2);
+  let bmiCat = bmi < 18.5 ? 'Lean' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Heavy' : 'High';
+
+  // TDEE (Mifflin-St Jeor, male, moderate activity x1.55)
+  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+  const tdee = Math.round(bmr * 1.55);
+
+  document.getElementById('s-bmi-val').textContent  = bmi.toFixed(1);
+  document.getElementById('s-tdee-val').textContent = tdee;
+  document.getElementById('s-bmi-cat').textContent  = bmiCat;
+  card.style.display = 'block';
+}
+
+function updateMacroSplitBar(g) {
+  const proKcal  = (g.pro  || +document.getElementById('s-goal-pro').value  || 0) * 4;
+  const carbKcal = (g.carb || +document.getElementById('s-goal-carb').value || 0) * 4;
+  const fatKcal  = (g.fat  || +document.getElementById('s-goal-fat').value  || 0) * 9;
+  const total = proKcal + carbKcal + fatKcal || 1;
+  const pPct = Math.round(proKcal  / total * 100);
+  const cPct = Math.round(carbKcal / total * 100);
+  const fPct = 100 - pPct - cPct;
+  document.getElementById('s-split-pro').style.width  = pPct + '%';
+  document.getElementById('s-split-carb').style.width = cPct + '%';
+  document.getElementById('s-split-fat').style.width  = fPct + '%';
+  document.getElementById('s-split-pro-pct').textContent  = pPct + '% P';
+  document.getElementById('s-split-carb-pct').textContent = cPct + '% C';
+  document.getElementById('s-split-fat-pct').textContent  = fPct + '% F';
+}
+
+function autoCalcMacros() {
+  const ft  = +document.getElementById('s-height-ft').value || 0;
+  const ins = +document.getElementById('s-height-in').value || 0;
+  const wt  = +document.getElementById('s-weight').value || 0;
+  const age = +document.getElementById('s-age').value || 0;
+  if (!ft || !wt || !age) { showToast('Fill in height, weight & age first'); return; }
+
+  const heightCm = (ft * 12 + ins) * 2.54;
+  const weightKg = wt * 0.453592;
+  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+  const tdee = Math.round(bmr * 1.55);
+
+  // Baseball athlete split: ~30% P, ~45% C, ~25% F
+  const pro  = Math.round((tdee * 0.30) / 4);
+  const carb = Math.round((tdee * 0.45) / 4);
+  const fat  = Math.round((tdee * 0.25) / 9);
+
+  document.getElementById('s-goal-cal').value  = tdee;
+  document.getElementById('s-goal-pro').value  = pro;
+  document.getElementById('s-goal-carb').value = carb;
+  document.getElementById('s-goal-fat').value  = fat;
+  updateMacroSplitBar({ pro, carb, fat });
+  showToast('Macros calculated from TDEE ✓');
+}
+
+function saveSettings() {
+  const profile = {
+    name:     document.getElementById('s-name').value,
+    age:      +document.getElementById('s-age').value || null,
+    position: document.getElementById('s-position').value,
+    heightFt: +document.getElementById('s-height-ft').value || null,
+    heightIn: +document.getElementById('s-height-in').value || 0,
+    weight:   +document.getElementById('s-weight').value || null,
+    throws:   document.getElementById('s-throws').value,
+    bats:     document.getElementById('s-bats').value,
+  };
+  localStorage.setItem('df_profile', JSON.stringify(profile));
+
+  const data = loadData();
+  data.goals = {
+    cal:  +document.getElementById('s-goal-cal').value  || 3000,
+    pro:  +document.getElementById('s-goal-pro').value  || 200,
+    carb: +document.getElementById('s-goal-carb').value || 350,
+    fat:  +document.getElementById('s-goal-fat').value  || 100,
+  };
+  saveData('goals', data.goals);
+  updateCalcStats(profile, data.goals);
+  showToast('Settings saved ✓');
+}
+
+function resetAllData() {
+  if (!confirm('Reset ALL DiamondForge data? This cannot be undone.')) return;
+  ['df_plan','df_logs','df_templates','df_nutrition','df_goals','df_profile','df_seeded'].forEach(k => localStorage.removeItem(k));
+  location.reload();
+}
+
+// ══════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  seedSampleData();
+  // Set nav colors
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.style.color = b.dataset.page === 'dashboard' ? 'var(--accent-orange)' : 'var(--text-muted)';
+  });
+  // Init dates
+  document.getElementById('nut-date').value = fmtDate(new Date());
+  document.getElementById('lift-date').value = fmtDate(new Date());
+  document.getElementById('hit-date').value = fmtDate(new Date());
+  document.getElementById('bp-date').value = fmtDate(new Date());
+  // Render
+  renderDashboard();
+  renderLibrary();
+  renderTemplates();
+  // Animate rings
+  setTimeout(() => renderDashboard(), 100);
+});
+</script>
+</body>
+</html>
