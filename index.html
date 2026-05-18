@@ -371,6 +371,73 @@
   /* Completion ring animation */
   @keyframes spin { to { stroke-dashoffset: 0; } }
 
+  /* Loading bounce */
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); opacity: 0.4; }
+    50%       { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* Onboarding goal button */
+  .ob-goal-btn {
+    cursor: pointer; transition: all 0.15s;
+    border: 1px solid var(--border);
+    border-radius: 10px; background: var(--bg-card);
+    color: var(--text-primary); width: 100%;
+  }
+  .ob-goal-btn.selected {
+    border-color: var(--accent-orange);
+    background: rgba(249,115,22,0.1);
+  }
+
+  /* Step dots */
+  .ob-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border2); transition: all 0.3s;
+  }
+  .ob-dot.active { background: var(--accent-orange); width: 22px; border-radius: 4px; }
+
+  /* Welcome card fade */
+  #welcomeCard { transition: opacity 0.3s ease; }
+  #welcomeCard.fade { opacity: 0; }
+
+  /* Welcome card inner */
+  .welcome-card-inner {
+    border-radius: 20px;
+    padding: 32px 28px;
+    border: 1px solid var(--border2);
+    background: var(--bg-card);
+    min-height: 280px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+
+  /* Welcome dot */
+  .w-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--border2); transition: all 0.3s;
+  }
+  .w-dot.active { background: var(--accent-orange); }
+
+  /* AI choice button */
+  .ai-choice {
+    display: block; width: 100%;
+    text-align: left;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border2);
+    background: var(--bg-card2);
+    color: var(--text-primary);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ai-choice:hover, .ai-choice.selected {
+    border-color: var(--accent-orange);
+    background: rgba(249,115,22,0.1);
+    color: var(--accent-orange);
+  }
+
   /* ── LOGO TEXT ANIMATIONS ── */
   .diamond-text {
     color: #93c5fd;
@@ -423,6 +490,197 @@
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════ -->
+<!--  ONBOARDING (first-run signup)         -->
+<!-- ══════════════════════════════════════ -->
+<div id="onboardingScreen" class="hidden" style="
+  position:fixed; inset:0; background:var(--bg-base);
+  z-index:500; overflow-y:auto; padding-bottom:40px;
+  padding-top: env(safe-area-inset-top, 0px);">
+
+  <!-- Step indicator -->
+  <div class="flex justify-center gap-2 pt-6 pb-4" id="obStepDots"></div>
+
+  <!-- Steps container -->
+  <div id="obSteps" style="overflow:hidden; position:relative;">
+
+    <!-- STEP 1: Welcome -->
+    <div class="ob-step px-6" id="ob-step-0">
+      <div class="text-center mb-8 mt-4">
+        <div class="font-bebas text-5xl tracking-wider mb-2">
+          <span class="diamond-text">DIAMOND</span><span class="forge-text">FORGE</span>
+        </div>
+        <div class="font-barlow-condensed text-base" style="color:var(--text-muted);">YOUR OFF-SEASON STARTS HERE</div>
+      </div>
+      <div class="card p-5 mb-6" style="border-color:rgba(249,115,22,0.3);">
+        <div class="font-barlow-condensed text-xs mb-2" style="color:var(--accent-orange);">WHAT IS DIAMONDFORGE?</div>
+        <div class="font-barlow-condensed text-sm" style="color:var(--text-secondary); line-height:1.6;">
+          Your complete off-season baseball training companion. Track workouts, monitor your nutrition, plan your weekly schedule, and log bullpen sessions — all in one place.
+        </div>
+      </div>
+      <div class="card p-5 mb-8" style="border-color:rgba(34,197,94,0.2);">
+        <div class="font-barlow-condensed text-xs mb-2" style="color:var(--accent-green);">SETUP TAKES 2 MINUTES</div>
+        <div class="font-barlow-condensed text-sm" style="color:var(--text-secondary); line-height:1.6;">
+          We'll ask a few questions to personalise your experience and calculate your training macros automatically.
+        </div>
+      </div>
+      <button onclick="obNext()" class="btn-primary w-full" style="font-size:18px; padding:14px;">Let's Build Your Profile →</button>
+    </div>
+
+    <!-- STEP 2: Name + position -->
+    <div class="ob-step px-6 hidden" id="ob-step-1">
+      <div class="mb-6 mt-4">
+        <div class="font-barlow-condensed text-xs mb-1" style="color:var(--text-muted);">STEP 1 OF 4</div>
+        <div class="font-bebas text-3xl tracking-wide">Who Are You?</div>
+      </div>
+      <div class="mb-4">
+        <label class="font-barlow-condensed text-xs font-semibold" style="color:var(--text-muted);">YOUR NAME</label>
+        <input type="text" id="ob-name" placeholder="First name..." class="w-full mt-2" autocomplete="given-name">
+      </div>
+      <div class="mb-4">
+        <label class="font-barlow-condensed text-xs font-semibold" style="color:var(--text-muted);">POSITION</label>
+        <select id="ob-position" class="w-full mt-2">
+          <option value="">Select your position...</option>
+          <option>Pitcher</option><option>Catcher</option><option>First Base</option>
+          <option>Second Base</option><option>Third Base</option><option>Shortstop</option>
+          <option>Left Field</option><option>Center Field</option><option>Right Field</option>
+          <option>DH</option><option>Utility</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mb-6">
+        <div>
+          <label class="font-barlow-condensed text-xs font-semibold" style="color:var(--text-muted);">THROWS</label>
+          <select id="ob-throws" class="w-full mt-2"><option value="">—</option><option>Right</option><option>Left</option></select>
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs font-semibold" style="color:var(--text-muted);">BATS</label>
+          <select id="ob-bats" class="w-full mt-2"><option value="">—</option><option>Right</option><option>Left</option><option>Switch</option></select>
+        </div>
+      </div>
+      <button onclick="obNext()" class="btn-primary w-full mb-3">Continue →</button>
+      <button onclick="obBack()" class="btn-secondary w-full">Back</button>
+    </div>
+
+    <!-- STEP 3: Physical stats -->
+    <div class="ob-step px-6 hidden" id="ob-step-2">
+      <div class="mb-6 mt-4">
+        <div class="font-barlow-condensed text-xs mb-1" style="color:var(--text-muted);">STEP 2 OF 4</div>
+        <div class="font-bebas text-3xl tracking-wide">Your Body Stats</div>
+        <div class="font-barlow-condensed text-xs mt-1" style="color:var(--text-muted);">Used to calculate your TDEE and macro targets</div>
+      </div>
+      <div class="mb-4">
+        <label class="font-barlow-condensed text-xs font-semibold" style="color:var(--text-muted);">AGE</label>
+        <input type="text" inputmode="decimal" pattern="[0-9]*" id="ob-age" placeholder="e.g. 22" class="w-full mt-2">
+      </div>
+      <div class="mb-4">
+        <label class="font-barlow-condensed text-xs font-semibold" style="color:var(--text-muted);">HEIGHT</label>
+        <div class="grid grid-cols-2 gap-2 mt-2">
+          <input type="text" inputmode="decimal" pattern="[0-9]*" id="ob-height-ft" placeholder="ft" class="w-full">
+          <input type="text" inputmode="decimal" pattern="[0-9]*" id="ob-height-in" placeholder="in" class="w-full">
+        </div>
+        <div class="grid grid-cols-2 gap-2 mt-1">
+          <div class="font-barlow-condensed text-xs text-center" style="color:var(--text-muted);">feet</div>
+          <div class="font-barlow-condensed text-xs text-center" style="color:var(--text-muted);">inches</div>
+        </div>
+      </div>
+      <div class="mb-6">
+        <label class="font-barlow-condensed text-xs font-semibold" style="color:var(--text-muted);">WEIGHT (lbs)</label>
+        <input type="text" inputmode="decimal" pattern="[0-9]*" id="ob-weight" placeholder="e.g. 195" class="w-full mt-2">
+      </div>
+      <button onclick="obNext()" class="btn-primary w-full mb-3">Continue →</button>
+      <button onclick="obBack()" class="btn-secondary w-full">Back</button>
+    </div>
+
+    <!-- STEP 4: Training goals -->
+    <div class="ob-step px-6 hidden" id="ob-step-3">
+      <div class="mb-6 mt-4">
+        <div class="font-barlow-condensed text-xs mb-1" style="color:var(--text-muted);">STEP 3 OF 4</div>
+        <div class="font-bebas text-3xl tracking-wide">Your Goals</div>
+      </div>
+      <div class="mb-4">
+        <label class="font-barlow-condensed text-xs font-semibold mb-2 block" style="color:var(--text-muted);">PRIMARY TRAINING GOAL</label>
+        <div class="grid gap-2" id="ob-goal-btns">
+          <button class="ob-goal-btn card p-3 text-left" onclick="selectObGoal(this,'Build Strength')">
+            <div class="font-barlow-condensed font-bold">💪 Build Strength</div>
+            <div class="font-barlow-condensed text-xs mt-0.5" style="color:var(--text-muted);">Max power and muscle mass</div>
+          </button>
+          <button class="ob-goal-btn card p-3 text-left" onclick="selectObGoal(this,'Improve Velocity')">
+            <div class="font-barlow-condensed font-bold">⚡ Improve Velocity</div>
+            <div class="font-barlow-condensed text-xs mt-0.5" style="color:var(--text-muted);">Throw harder, swing faster</div>
+          </button>
+          <button class="ob-goal-btn card p-3 text-left" onclick="selectObGoal(this,'Lean Out / Cut')">
+            <div class="font-barlow-condensed font-bold">🔥 Lean Out / Cut</div>
+            <div class="font-barlow-condensed text-xs mt-0.5" style="color:var(--text-muted);">Lose fat, maintain muscle</div>
+          </button>
+          <button class="ob-goal-btn card p-3 text-left" onclick="selectObGoal(this,'General Conditioning')">
+            <div class="font-barlow-condensed font-bold">🏃 General Conditioning</div>
+            <div class="font-barlow-condensed text-xs mt-0.5" style="color:var(--text-muted);">Endurance and athleticism</div>
+          </button>
+        </div>
+      </div>
+      <div class="mb-6">
+        <label class="font-barlow-condensed text-xs font-semibold mb-2 block" style="color:var(--text-muted);">CURRENT TRAINING PHASE</label>
+        <select id="ob-phase" class="w-full">
+          <option value="Early Offseason">Early Offseason</option>
+          <option value="Strength Phase">Strength Phase</option>
+          <option value="Power Phase">Power Phase</option>
+          <option value="Pre-Season">Pre-Season</option>
+        </select>
+      </div>
+      <input type="hidden" id="ob-goal-val" value="">
+      <button onclick="obNext()" class="btn-primary w-full mb-3">Continue →</button>
+      <button onclick="obBack()" class="btn-secondary w-full">Back</button>
+    </div>
+
+    <!-- STEP 5: You're all set -->
+    <div class="ob-step px-6 hidden" id="ob-step-4">
+      <div class="text-center mt-8 mb-6">
+        <div class="text-6xl mb-4">⚾</div>
+        <div class="font-bebas text-4xl tracking-wide mb-2" style="color:var(--accent-orange);">You're All Set!</div>
+        <div class="font-barlow-condensed text-sm" style="color:var(--text-secondary);">Your profile is ready. Here's what we calculated for you.</div>
+      </div>
+      <!-- Calculated summary card -->
+      <div class="card p-4 mb-4" id="ob-summary"></div>
+      <div class="card p-4 mb-6">
+        <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color:var(--text-muted);">YOUR DAILY MACRO TARGETS</div>
+        <div class="grid grid-cols-4 gap-2 text-center" id="ob-macros"></div>
+      </div>
+      <button onclick="finishOnboarding()" class="btn-primary w-full" style="font-size:18px; padding:14px;">Enter DiamondForge 🔥</button>
+    </div>
+
+  </div><!-- end obSteps -->
+</div><!-- end onboardingScreen -->
+
+<!-- ══════════════════════════════════════ -->
+<!--  WELCOME SPLASH                        -->
+<!-- ══════════════════════════════════════ -->
+<div id="welcomeScreen" class="hidden" style="
+  position:fixed; inset:0; z-index:400;
+  background:#0a0c0f;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding: env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0) 0;
+  cursor:pointer;" onclick="cycleWelcomeCard()">
+
+  <!-- Logo/title at top -->
+  <div class="text-center mb-8" style="position:absolute; top: calc(env(safe-area-inset-top,0px) + 32px); left:0; right:0;">
+    <div class="font-bebas text-3xl tracking-wider">
+      <span class="diamond-text">DIAMOND</span><span class="forge-text">FORGE</span>
+    </div>
+  </div>
+
+  <!-- Card area -->
+  <div id="welcomeCard" style="width:100%; max-width:360px; padding:0 24px;"></div>
+
+  <!-- Dot indicators -->
+  <div class="flex gap-2 mt-8" id="welcomeDots"></div>
+
+  <!-- Tap hint -->
+  <div style="position:absolute; bottom: calc(env(safe-area-inset-bottom,0px) + 32px); left:0; right:0; text-align:center;">
+    <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);" id="welcomeHint">TAP ANYWHERE TO CONTINUE</div>
+  </div>
+</div>
 
 <!-- APP HEADER -->
 <div class="app-header">
@@ -995,7 +1253,14 @@
       <h1 class="font-bebas text-4xl tracking-wide">Nutrition</h1>
     </div>
 
-    <!-- Goal setter -->
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
+      <button class="tab-pill active" id="nut-tab-log" onclick="setNutTab('log',this)">Log</button>
+      <button class="tab-pill" id="nut-tab-photo" onclick="setNutTab('photo',this)">📸 AI Scan</button>
+    </div>
+
+    <!-- LOG TAB -->
+    <div id="nut-log">
     <div class="card p-4 mb-4">
       <div class="flex items-center justify-between mb-3">
         <div class="font-barlow-condensed text-xs font-semibold" style="color:var(--text-muted);">DAILY MACRO GOALS</div>
@@ -1047,9 +1312,89 @@
       <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color:var(--text-muted);">MEAL LOG</div>
       <div id="mealList"></div>
     </div>
-  </div>
+    </div><!-- end nut-log -->
 
-  <!-- ── SETTINGS ── -->
+    <!-- AI PHOTO TAB -->
+    <div id="nut-photo" class="hidden">
+
+      <!-- Upload area -->
+      <div class="card p-4 mb-4" id="photoUploadCard">
+        <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color:var(--text-muted);">AI MACRO SCAN</div>
+        <p class="font-barlow-condensed text-sm mb-4" style="color:var(--text-secondary);">
+          Take a photo of your meal and AI will ask a few quick questions, then estimate your macros.
+        </p>
+        <!-- Photo preview -->
+        <div id="photoPreviewWrap" class="hidden mb-4">
+          <img id="photoPreview" class="w-full rounded-xl" style="max-height:220px; object-fit:cover;" />
+        </div>
+        <!-- Upload button -->
+        <label for="foodPhotoInput" class="btn-primary w-full text-center block cursor-pointer" style="line-height:2.4;">
+          📷 Take / Choose Photo
+        </label>
+        <input type="file" id="foodPhotoInput" accept="image/*" capture="environment" class="hidden" onchange="handleFoodPhoto(event)">
+        <div id="photoStartBtn" class="hidden mt-3">
+          <button onclick="startAIScan()" class="btn-primary w-full">Analyse This Meal →</button>
+        </div>
+      </div>
+
+      <!-- Q&A conversation -->
+      <div id="photoQA" class="hidden">
+        <div class="card p-4 mb-4">
+          <!-- Progress bar -->
+          <div class="flex items-center gap-2 mb-3">
+            <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">REFINING ESTIMATE</div>
+            <div class="flex-1 macro-bar"><div class="macro-fill protein-fill" id="qaProgressBar" style="width:0%"></div></div>
+            <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);" id="qaProgressLabel">0 / 0</div>
+          </div>
+          <!-- Question -->
+          <div class="font-barlow-condensed font-bold text-base mb-3" id="qaQuestion"></div>
+          <!-- Multiple choice answers -->
+          <div id="qaChoices" class="grid gap-2"></div>
+          <!-- "Other" text input (shown when Other is chosen) -->
+          <div id="qaOtherWrap" class="hidden mt-3">
+            <input type="text" id="qaOtherInput" placeholder="Type your answer..." class="w-full text-sm mb-2">
+            <button onclick="submitOtherAnswer()" class="btn-primary w-full">Submit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI estimate result -->
+      <div id="photoResult" class="hidden">
+        <div class="card p-4 mb-4">
+          <div class="font-barlow-condensed text-xs font-semibold mb-1" style="color:var(--text-muted);">AI ESTIMATED MACROS</div>
+          <div class="font-barlow-condensed text-xs mb-3" style="color:var(--text-muted);" id="resultMealName"></div>
+          <div class="grid grid-cols-4 gap-2 text-center mb-4">
+            <div><div class="font-bebas text-2xl" style="color:var(--accent-orange);" id="res-cal">—</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CAL</div></div>
+            <div><div class="font-bebas text-2xl" style="color:var(--accent-red);" id="res-pro">—</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PROTEIN</div></div>
+            <div><div class="font-bebas text-2xl" style="color:var(--accent-blue);" id="res-carb">—</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CARBS</div></div>
+            <div><div class="font-bebas text-2xl" style="color:var(--accent-purple);" id="res-fat">—</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">FAT</div></div>
+          </div>
+          <!-- Editable name before logging -->
+          <div class="mb-3">
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">MEAL NAME</label>
+            <input type="text" id="res-meal-name" class="w-full mt-1 text-sm" placeholder="Meal name...">
+          </div>
+          <div class="card2 p-3 mb-4 text-sm font-barlow-condensed" style="color:var(--text-secondary);" id="resultNotes"></div>
+          <button onclick="logAIMeal()" class="btn-primary w-full mb-2">Log This Meal</button>
+          <button onclick="resetAIScan()" class="btn-secondary w-full">Scan Another</button>
+        </div>
+      </div>
+
+      <!-- Loading state -->
+      <div id="photoLoading" class="hidden">
+        <div class="card p-8 text-center mb-4">
+          <div class="font-bebas text-2xl mb-2" style="color:var(--accent-orange);" id="loadingLabel">ANALYSING...</div>
+          <div class="font-barlow-condensed text-sm" style="color:var(--text-muted);" id="loadingSubLabel">AI is scanning your meal</div>
+          <div class="mt-4 flex justify-center gap-1">
+            <div class="w-2 h-2 rounded-full" style="background:var(--accent-orange); animation: bounce 1s infinite 0s;"></div>
+            <div class="w-2 h-2 rounded-full" style="background:var(--accent-orange); animation: bounce 1s infinite 0.2s;"></div>
+            <div class="w-2 h-2 rounded-full" style="background:var(--accent-orange); animation: bounce 1s infinite 0.4s;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end nut-photo -->
+  </div><!-- end page-nutrition -->
   <div class="page" id="page-settings">
     <div class="mb-4">
       <p class="font-barlow-condensed text-sm" style="color: var(--text-muted);">YOUR PROFILE</p>
@@ -1414,6 +1759,16 @@ function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); retu
 let currentPage = 'dashboard';
 
 function navigate(page) {
+  // Auto-save settings when leaving settings page
+  if (currentPage === 'settings') {
+    try { autoSaveSettings(); } catch(e) {}
+  }
+  // Save nutrition date selection
+  if (currentPage === 'nutrition') {
+    const nutDate = document.getElementById('nut-date');
+    if (nutDate && nutDate.value) localStorage.setItem('df_nut_date', nutDate.value);
+  }
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => {
     const isActive = b.dataset.page === page;
@@ -2192,10 +2547,20 @@ function deleteTemplate(i) {
 let liftExercises = [];
 
 function renderLog() {
-  document.getElementById('lift-date').value = fmtDate(new Date());
-  document.getElementById('hit-date').value = fmtDate(new Date());
-  document.getElementById('bp-date').value = fmtDate(new Date());
-  document.getElementById('nut-date').value = fmtDate(new Date());
+  // Restore saved dates or default to today
+  const savedLiftDate = localStorage.getItem('df_lift_date') || fmtDate(new Date());
+  const savedHitDate  = localStorage.getItem('df_hit_date')  || fmtDate(new Date());
+  const savedBpDate   = localStorage.getItem('df_bp_date')   || fmtDate(new Date());
+
+  document.getElementById('lift-date').value = savedLiftDate;
+  document.getElementById('hit-date').value  = savedHitDate;
+  document.getElementById('bp-date').value   = savedBpDate;
+  document.getElementById('nut-date').value  = localStorage.getItem('df_nut_date') || fmtDate(new Date());
+
+  // Auto-save dates when changed
+  document.getElementById('lift-date').onchange = (e) => localStorage.setItem('df_lift_date', e.target.value);
+  document.getElementById('hit-date').onchange  = (e) => localStorage.setItem('df_hit_date',  e.target.value);
+  document.getElementById('bp-date').onchange   = (e) => localStorage.setItem('df_bp_date',   e.target.value);
   populateLiftTemplates();
   renderLogHistory();
 
@@ -2396,6 +2761,264 @@ function deleteLog(i) {
 }
 
 // ══════════════════════════════════════════════
+//  NUTRITION TABS
+// ══════════════════════════════════════════════
+function setNutTab(tab, el) {
+  document.getElementById('nut-log').classList.toggle('hidden', tab !== 'log');
+  document.getElementById('nut-photo').classList.toggle('hidden', tab !== 'photo');
+  document.querySelectorAll('#page-nutrition .tab-pill').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+// ══════════════════════════════════════════════
+//  AI FOOD PHOTO SCAN
+// ══════════════════════════════════════════════
+let aiPhotoBase64 = null;
+let aiConversation = [];   // full message history sent to Claude
+let aiQuestions = [];      // parsed question queue
+let aiCurrentQ = 0;
+let aiAnswers = {};        // { questionKey: answer }
+let aiTotalQuestions = 0;
+
+function handleFoodPhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    aiPhotoBase64 = dataUrl.split(',')[1];
+    document.getElementById('photoPreview').src = dataUrl;
+    document.getElementById('photoPreviewWrap').classList.remove('hidden');
+    document.getElementById('photoStartBtn').classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+async function startAIScan() {
+  if (!aiPhotoBase64) return;
+  showPhotoState('loading');
+  document.getElementById('loadingLabel').textContent = 'IDENTIFYING MEAL...';
+  document.getElementById('loadingSubLabel').textContent = 'AI is scanning your photo';
+
+  // First call: identify the meal and get clarifying questions
+  const systemPrompt = `You are a sports nutrition assistant helping an athlete log their meals accurately.
+You will be shown a photo of food. Your job is to:
+1. Identify what the meal appears to be
+2. Generate exactly 3-5 clarifying questions to accurately estimate macros
+3. Each question has 4-5 short multiple choice answers plus an "Other" option
+
+Respond ONLY with valid JSON, no markdown, no preamble, in this exact format:
+{
+  "mealName": "Chicken Sandwich",
+  "questions": [
+    {
+      "key": "bread",
+      "question": "What kind of bread was used?",
+      "choices": ["White bread", "Whole wheat", "Brioche bun", "Gluten-free", "Other"]
+    },
+    {
+      "key": "protein_size",
+      "question": "How large was the chicken portion?",
+      "choices": ["Small (3oz)", "Medium (5oz)", "Large (7oz)", "Extra large (9oz+)", "Other"]
+    }
+  ]
+}`;
+
+  aiConversation = [];
+  aiAnswers = {};
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: aiPhotoBase64 } },
+            { type: 'text', text: 'Please identify this meal and give me your clarifying questions.' }
+          ]
+        }]
+      })
+    });
+
+    const data = await resp.json();
+    const raw = data.content.map(b => b.text || '').join('');
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    aiQuestions = parsed.questions || [];
+    aiTotalQuestions = aiQuestions.length;
+    aiCurrentQ = 0;
+    document.getElementById('res-meal-name').value = parsed.mealName || 'My Meal';
+    document.getElementById('resultMealName').textContent = parsed.mealName || '';
+
+    // Save conversation context
+    aiConversation = [
+      {
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: aiPhotoBase64 } },
+          { type: 'text', text: 'Please identify this meal and give me your clarifying questions.' }
+        ]
+      },
+      { role: 'assistant', content: raw }
+    ];
+
+    showPhotoState('qa');
+    showNextQuestion();
+  } catch(e) {
+    showToast('AI scan failed — check connection');
+    showPhotoState('upload');
+  }
+}
+
+function showNextQuestion() {
+  if (aiCurrentQ >= aiTotalQuestions) {
+    estimateMacros();
+    return;
+  }
+  const q = aiQuestions[aiCurrentQ];
+  const pct = Math.round((aiCurrentQ / aiTotalQuestions) * 100);
+  document.getElementById('qaProgressBar').style.width = pct + '%';
+  document.getElementById('qaProgressLabel').textContent = (aiCurrentQ + 1) + ' / ' + aiTotalQuestions;
+  document.getElementById('qaQuestion').textContent = q.question;
+  document.getElementById('qaOtherWrap').classList.add('hidden');
+
+  const choicesEl = document.getElementById('qaChoices');
+  choicesEl.innerHTML = q.choices.map(choice => `
+    <button class="ai-choice" onclick="selectAIChoice(this, '${q.key}', '${choice.replace(/'/g,"\\'")}')">
+      ${choice}
+    </button>
+  `).join('');
+}
+
+function selectAIChoice(el, key, value) {
+  // Highlight selection
+  document.querySelectorAll('.ai-choice').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+
+  if (value === 'Other') {
+    document.getElementById('qaOtherWrap').classList.remove('hidden');
+    document.getElementById('qaOtherInput').focus();
+    return;
+  }
+  aiAnswers[key] = value;
+  aiCurrentQ++;
+  setTimeout(showNextQuestion, 280);
+}
+
+function submitOtherAnswer() {
+  const val = document.getElementById('qaOtherInput').value.trim();
+  if (!val) { showToast('Please type an answer'); return; }
+  const q = aiQuestions[aiCurrentQ];
+  aiAnswers[q.key] = val;
+  document.getElementById('qaOtherInput').value = '';
+  document.getElementById('qaOtherWrap').classList.add('hidden');
+  aiCurrentQ++;
+  setTimeout(showNextQuestion, 280);
+}
+
+async function estimateMacros() {
+  showPhotoState('loading');
+  document.getElementById('loadingLabel').textContent = 'CALCULATING...';
+  document.getElementById('loadingSubLabel').textContent = 'Estimating your macros';
+
+  // Build answer summary string
+  const answerSummary = Object.entries(aiAnswers)
+    .map(([k, v]) => `${k}: ${v}`).join(', ');
+
+  const estimatePrompt = `Based on the meal in the photo and these answers — ${answerSummary} — 
+give me a precise macro estimate for this meal as a single serving.
+
+Respond ONLY with valid JSON, no markdown:
+{
+  "calories": 650,
+  "protein": 42,
+  "carbs": 58,
+  "fat": 18,
+  "notes": "Estimate based on grilled chicken, whole wheat bun, and standard condiments."
+}`;
+
+  aiConversation.push({ role: 'user', content: estimatePrompt });
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: aiConversation
+      })
+    });
+    const data = await resp.json();
+    const raw = data.content.map(b => b.text || '').join('');
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+
+    document.getElementById('res-cal').textContent  = result.calories  || '—';
+    document.getElementById('res-pro').textContent  = (result.protein  || '—') + 'g';
+    document.getElementById('res-carb').textContent = (result.carbs    || '—') + 'g';
+    document.getElementById('res-fat').textContent  = (result.fat      || '—') + 'g';
+    document.getElementById('resultNotes').textContent = result.notes || '';
+
+    // Store for logging
+    window._aiResult = result;
+    showPhotoState('result');
+  } catch(e) {
+    showToast('Macro estimate failed — try again');
+    showPhotoState('upload');
+  }
+}
+
+function logAIMeal() {
+  const r = window._aiResult;
+  if (!r) return;
+  const data = loadData();
+  const dateStr = document.getElementById('nut-date').value || fmtDate(new Date());
+  data.nutrition.push({
+    date: dateStr,
+    name: document.getElementById('res-meal-name').value || 'AI Scanned Meal',
+    cal:  r.calories || 0,
+    pro:  r.protein  || 0,
+    carb: r.carbs    || 0,
+    fat:  r.fat      || 0,
+  });
+  saveData('nutrition', data.nutrition);
+  showToast('Meal logged ✓');
+  setNutTab('log', document.getElementById('nut-tab-log'));
+  renderNutrition();
+  resetAIScan();
+}
+
+function resetAIScan() {
+  aiPhotoBase64 = null;
+  aiConversation = [];
+  aiQuestions = [];
+  aiCurrentQ = 0;
+  aiAnswers = {};
+  window._aiResult = null;
+  document.getElementById('photoPreviewWrap').classList.add('hidden');
+  document.getElementById('photoStartBtn').classList.add('hidden');
+  document.getElementById('foodPhotoInput').value = '';
+  showPhotoState('upload');
+}
+
+function showPhotoState(state) {
+  document.getElementById('photoUploadCard').classList.toggle('hidden', state !== 'upload');
+  document.getElementById('photoQA').classList.toggle('hidden', state !== 'qa');
+  document.getElementById('photoResult').classList.toggle('hidden', state !== 'result');
+  document.getElementById('photoLoading').classList.toggle('hidden', state !== 'loading');
+  // Keep photo upload visible in qa state so user can see their photo
+  if (state === 'qa') document.getElementById('photoUploadCard').classList.remove('hidden');
+  if (state === 'qa') document.getElementById('photoStartBtn').classList.add('hidden');
+}
+
+// ══════════════════════════════════════════════
 //  NUTRITION
 // ══════════════════════════════════════════════
 let goalsOpen = false;
@@ -2403,6 +3026,13 @@ let goalsOpen = false;
 function renderNutrition() {
   const data = loadData();
   const g = data.goals;
+
+  // Restore saved date or default to today
+  const savedDate = localStorage.getItem('df_nut_date');
+  const nutDateEl = document.getElementById('nut-date');
+  if (nutDateEl && !nutDateEl.value) {
+    nutDateEl.value = savedDate || fmtDate(new Date());
+  }
 
   document.getElementById('goal-cal-display').textContent = g.cal;
   document.getElementById('goal-pro-display').textContent = g.pro + 'g';
@@ -2534,14 +3164,14 @@ function renderSettings() {
   const data = loadData();
   const g = data.goals;
 
-  if (profile.name)       document.getElementById('s-name').value = profile.name;
-  if (profile.age)        document.getElementById('s-age').value = profile.age;
-  if (profile.position)   document.getElementById('s-position').value = profile.position;
-  if (profile.heightFt)   document.getElementById('s-height-ft').value = profile.heightFt;
-  if (profile.heightIn !== undefined) document.getElementById('s-height-in').value = profile.heightIn;
-  if (profile.weight)     document.getElementById('s-weight').value = profile.weight;
-  if (profile.throws)     document.getElementById('s-throws').value = profile.throws;
-  if (profile.bats)       document.getElementById('s-bats').value = profile.bats;
+  if (profile.name)                        document.getElementById('s-name').value       = profile.name;
+  if (profile.age)                         document.getElementById('s-age').value        = profile.age;
+  if (profile.position)                    document.getElementById('s-position').value   = profile.position;
+  if (profile.heightFt)                    document.getElementById('s-height-ft').value  = profile.heightFt;
+  if (profile.heightIn !== undefined)      document.getElementById('s-height-in').value  = profile.heightIn;
+  if (profile.weight)                      document.getElementById('s-weight').value     = profile.weight;
+  if (profile.throws)                      document.getElementById('s-throws').value     = profile.throws;
+  if (profile.bats)                        document.getElementById('s-bats').value       = profile.bats;
 
   document.getElementById('s-goal-cal').value  = g.cal;
   document.getElementById('s-goal-pro').value  = g.pro;
@@ -2551,17 +3181,60 @@ function renderSettings() {
   updateCalcStats(profile, g);
   updateMacroSplitBar(g);
 
-  // Live macro split update
-  ['s-goal-cal','s-goal-pro','s-goal-carb','s-goal-fat'].forEach(id => {
-    document.getElementById(id).oninput = () => {
+  // ── Auto-save every field on change ──
+  const profileFields = ['s-name','s-age','s-position','s-height-ft','s-height-in','s-weight','s-throws','s-bats'];
+  const macroFields   = ['s-goal-cal','s-goal-pro','s-goal-carb','s-goal-fat'];
+
+  profileFields.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    // Remove old listeners by cloning
+    const fresh = el.cloneNode(true);
+    el.parentNode.replaceChild(fresh, el);
+    fresh.addEventListener('input',  autoSaveSettings);
+    fresh.addEventListener('change', autoSaveSettings);
+  });
+
+  macroFields.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const fresh = el.cloneNode(true);
+    el.parentNode.replaceChild(fresh, el);
+    fresh.addEventListener('input', () => {
       updateMacroSplitBar({
         cal:  +document.getElementById('s-goal-cal').value,
         pro:  +document.getElementById('s-goal-pro').value,
         carb: +document.getElementById('s-goal-carb').value,
         fat:  +document.getElementById('s-goal-fat').value,
       });
-    };
+      autoSaveSettings();
+    });
+    fresh.addEventListener('change', autoSaveSettings);
   });
+}
+
+function autoSaveSettings() {
+  const profile = {
+    name:     document.getElementById('s-name').value,
+    age:      +document.getElementById('s-age').value     || null,
+    position: document.getElementById('s-position').value,
+    heightFt: +document.getElementById('s-height-ft').value || null,
+    heightIn: +document.getElementById('s-height-in').value || 0,
+    weight:   +document.getElementById('s-weight').value  || null,
+    throws:   document.getElementById('s-throws').value,
+    bats:     document.getElementById('s-bats').value,
+  };
+  localStorage.setItem('df_profile', JSON.stringify(profile));
+
+  const data = loadData();
+  data.goals = {
+    cal:  +document.getElementById('s-goal-cal').value  || data.goals.cal,
+    pro:  +document.getElementById('s-goal-pro').value  || data.goals.pro,
+    carb: +document.getElementById('s-goal-carb').value || data.goals.carb,
+    fat:  +document.getElementById('s-goal-fat').value  || data.goals.fat,
+  };
+  saveData('goals', data.goals);
+  updateCalcStats(profile, data.goals);
 }
 
 function updateCalcStats(profile, goals) {
@@ -2632,33 +3305,15 @@ function autoCalcMacros() {
 }
 
 function saveSettings() {
-  const profile = {
-    name:     document.getElementById('s-name').value,
-    age:      +document.getElementById('s-age').value || null,
-    position: document.getElementById('s-position').value,
-    heightFt: +document.getElementById('s-height-ft').value || null,
-    heightIn: +document.getElementById('s-height-in').value || 0,
-    weight:   +document.getElementById('s-weight').value || null,
-    throws:   document.getElementById('s-throws').value,
-    bats:     document.getElementById('s-bats').value,
-  };
-  localStorage.setItem('df_profile', JSON.stringify(profile));
-
-  const data = loadData();
-  data.goals = {
-    cal:  +document.getElementById('s-goal-cal').value  || 3000,
-    pro:  +document.getElementById('s-goal-pro').value  || 200,
-    carb: +document.getElementById('s-goal-carb').value || 350,
-    fat:  +document.getElementById('s-goal-fat').value  || 100,
-  };
-  saveData('goals', data.goals);
-  updateCalcStats(profile, data.goals);
+  autoSaveSettings();
   showToast('Settings saved ✓');
 }
 
 function resetAllData() {
   if (!confirm('Reset ALL DiamondForge data? This cannot be undone.')) return;
-  ['df_plan','df_logs','df_templates','df_nutrition','df_goals','df_profile','df_seeded'].forEach(k => localStorage.removeItem(k));
+  ['df_plan','df_logs','df_templates','df_nutrition','df_goals','df_profile','df_exercises',
+   'df_seeded','df_nut_date','df_lift_date','df_hit_date','df_bp_date',
+   'df_onboarded','df_welcome_seen'].forEach(k => localStorage.removeItem(k));
   location.reload();
 }
 
@@ -2675,25 +3330,343 @@ function showToast(msg) {
 }
 
 // ══════════════════════════════════════════════
+//  ONBOARDING
+// ══════════════════════════════════════════════
+const OB_TOTAL_STEPS = 5;
+let obCurrentStep = 0;
+let obGoal = '';
+
+function startOnboarding() {
+  document.getElementById('onboardingScreen').classList.remove('hidden');
+  renderObDots();
+  showObStep(0);
+}
+
+function renderObDots() {
+  const el = document.getElementById('obStepDots');
+  el.innerHTML = Array.from({length: OB_TOTAL_STEPS}, (_,i) =>
+    `<div class="ob-dot ${i===obCurrentStep?'active':''}" id="ob-dot-${i}"></div>`
+  ).join('');
+}
+
+function showObStep(n) {
+  document.querySelectorAll('.ob-step').forEach((s,i) => s.classList.toggle('hidden', i !== n));
+  document.querySelectorAll('.ob-dot').forEach((d,i) => d.classList.toggle('active', i === n));
+  obCurrentStep = n;
+  if (n === OB_TOTAL_STEPS - 1) buildObSummary();
+}
+
+function obNext() {
+  // Validate current step
+  if (obCurrentStep === 1) {
+    const name = document.getElementById('ob-name').value.trim();
+    if (!name) { showToast('Please enter your name'); return; }
+  }
+  if (obCurrentStep === 2) {
+    const ft = document.getElementById('ob-height-ft').value;
+    const wt = document.getElementById('ob-weight').value;
+    if (!ft || !wt) { showToast('Please enter height and weight'); return; }
+  }
+  if (obCurrentStep < OB_TOTAL_STEPS - 1) showObStep(obCurrentStep + 1);
+}
+
+function obBack() {
+  if (obCurrentStep > 0) showObStep(obCurrentStep - 1);
+}
+
+function selectObGoal(el, goal) {
+  document.querySelectorAll('.ob-goal-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  obGoal = goal;
+  document.getElementById('ob-goal-val').value = goal;
+}
+
+function buildObSummary() {
+  const name   = document.getElementById('ob-name').value.trim();
+  const pos    = document.getElementById('ob-position').value;
+  const ft     = +document.getElementById('ob-height-ft').value || 0;
+  const ins    = +document.getElementById('ob-height-in').value || 0;
+  const wt     = +document.getElementById('ob-weight').value || 0;
+  const age    = +document.getElementById('ob-age').value || 0;
+  const goal   = obGoal || 'General Conditioning';
+
+  // Calculate macros
+  const heightCm = (ft * 12 + ins) * 2.54;
+  const weightKg = wt * 0.453592;
+
+  // Pick multiplier based on goal
+  const calMult  = goal === 'Build Strength' ? 1.65 : goal === 'Lean Out / Cut' ? 1.35 : goal === 'Improve Velocity' ? 1.6 : 1.55;
+  const bmr      = 10 * weightKg + 6.25 * heightCm - 5 * (age||22) + 5;
+  const tdee     = Math.round(bmr * calMult);
+  const proMult  = goal === 'Build Strength' ? 0.35 : goal === 'Lean Out / Cut' ? 0.40 : 0.30;
+  const carbMult = goal === 'Lean Out / Cut' ? 0.35 : 0.45;
+  const fatMult  = 1 - proMult - carbMult;
+  const pro  = Math.round((tdee * proMult) / 4);
+  const carb = Math.round((tdee * carbMult) / 4);
+  const fat  = Math.round((tdee * fatMult) / 9);
+
+  // Store for finishOnboarding
+  window._obCalc = { name, pos, ft, ins, wt, age, goal,
+    phase: document.getElementById('ob-phase').value,
+    throws: document.getElementById('ob-throws').value,
+    bats: document.getElementById('ob-bats').value,
+    cal: tdee, pro, carb, fat };
+
+  // Summary card
+  document.getElementById('ob-summary').innerHTML = `
+    <div class="flex items-center gap-3 mb-3">
+      <div class="font-bebas text-5xl" style="color:var(--accent-orange);">${name.toUpperCase()[0]}</div>
+      <div>
+        <div class="font-barlow-condensed font-bold text-lg">${name}</div>
+        <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${pos||'Athlete'} · ${goal}</div>
+        <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${ft}'${ins}" · ${wt} lbs${age?' · Age '+age:''}</div>
+      </div>
+    </div>
+    <div class="font-barlow-condensed text-xs p-2 rounded-lg" style="background:var(--bg-card3); color:var(--text-secondary);">
+      Phase: <strong>${document.getElementById('ob-phase').value}</strong> · Throws: <strong>${document.getElementById('ob-throws').value||'—'}</strong> · Bats: <strong>${document.getElementById('ob-bats').value||'—'}</strong>
+    </div>`;
+
+  document.getElementById('ob-macros').innerHTML = `
+    <div><div class="font-bebas text-2xl" style="color:var(--accent-orange);">${tdee}</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CAL</div></div>
+    <div><div class="font-bebas text-2xl" style="color:var(--accent-red);">${pro}g</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PROTEIN</div></div>
+    <div><div class="font-bebas text-2xl" style="color:var(--accent-blue);">${carb}g</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CARBS</div></div>
+    <div><div class="font-bebas text-2xl" style="color:var(--accent-purple);">${fat}g</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">FAT</div></div>`;
+}
+
+function finishOnboarding() {
+  const d = window._obCalc;
+  if (!d) return;
+
+  // Save profile
+  const profile = {
+    name: d.name, age: d.age, position: d.pos,
+    heightFt: d.ft, heightIn: d.ins, weight: d.wt,
+    throws: d.throws, bats: d.bats, goal: d.goal,
+  };
+  localStorage.setItem('df_profile', JSON.stringify(profile));
+
+  // Save goals/macros
+  const goals = { cal: d.cal, pro: d.pro, carb: d.carb, fat: d.fat };
+  saveData('goals', goals);
+
+  // Mark onboarding complete
+  localStorage.setItem('df_onboarded', '1');
+
+  // Hide onboarding, show welcome splash
+  document.getElementById('onboardingScreen').classList.add('hidden');
+  showWelcomeSplash();
+}
+
+// ══════════════════════════════════════════════
+//  WELCOME SPLASH
+// ══════════════════════════════════════════════
+const QUOTES = [
+  { text: "The difference between the impossible and the possible lies in a person's determination.", author: "Tommy Lasorda" },
+  { text: "Every strike brings me closer to the next home run.", author: "Babe Ruth" },
+  { text: "Baseball is the only field of endeavor where a man can succeed three times out of ten and be considered a good performer.", author: "Ted Williams" },
+  { text: "It's not whether you get knocked down, it's whether you get up.", author: "Vince Lombardi" },
+  { text: "You can't put a limit on anything. The more you dream, the farther you get.", author: "Michael Phelps" },
+  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+  { text: "I never worried about the fastball. I could always hit the fastball. The changeup gave me trouble.", author: "Hank Aaron" },
+  { text: "There may be people who have more talent than you, but there's no excuse for anyone to work harder than you do.", author: "Derek Jeter" },
+];
+
+let welcomeCards = [];
+let welcomeIdx = 0;
+
+function buildWelcomeCards() {
+  const data = loadData();
+  const profile = JSON.parse(localStorage.getItem('df_profile') || '{}');
+  const today = new Date();
+  const todayStr = fmtDate(today);
+  const g = data.goals;
+
+  // Card 1: Greeting
+  const name = profile.name || 'Athlete';
+  const hour = today.getHours();
+  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+  const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][today.getDay()];
+
+  const cards = [];
+
+  cards.push({
+    type: 'greeting',
+    html: `
+      <div class="welcome-card-inner text-center">
+        <div class="font-barlow-condensed text-sm mb-1" style="color:var(--text-muted);">${greeting.toUpperCase()}</div>
+        <div class="font-bebas text-5xl mb-1" style="color:var(--accent-orange);">${name.toUpperCase()}</div>
+        <div class="font-barlow-condensed text-sm mb-6" style="color:var(--text-secondary);">${dayName}, ${MONTHS[today.getMonth()]} ${today.getDate()}</div>
+        <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">TAP TO SEE TODAY'S PLAN</div>
+      </div>`
+  });
+
+  // Card 2: Today's session
+  const todayPlan = data.plan[todayStr];
+  const st = todayPlan ? SESSION_TYPES.find(s => s.id === todayPlan.type) : null;
+  cards.push({
+    type: 'workout',
+    html: `
+      <div class="welcome-card-inner">
+        <div class="font-barlow-condensed text-xs mb-3" style="color:var(--text-muted);">TODAY'S SESSION</div>
+        ${st ? `
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-4 h-4 rounded-full ${st.dotClass}"></div>
+            <div class="font-bebas text-3xl">${st.label}</div>
+          </div>
+          ${todayPlan.startTime ? `<div class="font-barlow-condensed text-sm mb-2" style="color:var(--accent-orange);">⏰ ${todayPlan.startTime}${todayPlan.endTime?' – '+todayPlan.endTime:''}</div>` : ''}
+          ${todayPlan.location ? `<div class="font-barlow-condensed text-sm mb-2" style="color:var(--text-secondary);">📍 ${todayPlan.location}</div>` : ''}
+          ${todayPlan.notes ? `<div class="font-barlow-condensed text-sm" style="color:var(--text-secondary);">${todayPlan.notes}</div>` : ''}
+        ` : `
+          <div class="font-bebas text-3xl mb-2" style="color:var(--text-muted);">REST DAY</div>
+          <div class="font-barlow-condensed text-sm" style="color:var(--text-secondary);">No session planned for today. Use the Planner to schedule one.</div>
+        `}
+      </div>`
+  });
+
+  // Card 3: Today's macros
+  const todayMeals = data.nutrition.filter(m => m.date === todayStr);
+  const eaten = todayMeals.reduce((a,m) => ({
+    cal: a.cal+m.cal, pro: a.pro+m.pro, carb: a.carb+m.carb, fat: a.fat+m.fat
+  }), {cal:0,pro:0,carb:0,fat:0});
+  const pct = (v,goal) => goal ? Math.min(100, Math.round(v/goal*100)) : 0;
+
+  cards.push({
+    type: 'macros',
+    html: `
+      <div class="welcome-card-inner">
+        <div class="font-barlow-condensed text-xs mb-4" style="color:var(--text-muted);">TODAY'S NUTRITION</div>
+        <div class="grid grid-cols-4 gap-1 text-center mb-4">
+          <div><div class="font-bebas text-2xl" style="color:var(--accent-orange);">${eaten.cal}</div><div class="font-barlow-condensed" style="font-size:10px;color:var(--text-muted);">/ ${g.cal}<br>CAL</div></div>
+          <div><div class="font-bebas text-2xl" style="color:var(--accent-red);">${eaten.pro}g</div><div class="font-barlow-condensed" style="font-size:10px;color:var(--text-muted);">/ ${g.pro}g<br>PRO</div></div>
+          <div><div class="font-bebas text-2xl" style="color:var(--accent-blue);">${eaten.carb}g</div><div class="font-barlow-condensed" style="font-size:10px;color:var(--text-muted);">/ ${g.carb}g<br>CARB</div></div>
+          <div><div class="font-bebas text-2xl" style="color:var(--accent-purple);">${eaten.fat}g</div><div class="font-barlow-condensed" style="font-size:10px;color:var(--text-muted);">/ ${g.fat}g<br>FAT</div></div>
+        </div>
+        ${['Calories','Protein','Carbs','Fat'].map((label,i) => {
+          const vals = [eaten.cal,eaten.pro,eaten.carb,eaten.fat];
+          const goals = [g.cal,g.pro,g.carb,g.fat];
+          const colors = ['protein-fill','protein-fill','carb-fill','fat-fill'];
+          return `<div class="mb-2"><div class="flex justify-between mb-0.5"><span class="font-barlow-condensed" style="font-size:11px;color:var(--text-muted);">${label}</span><span class="font-barlow-condensed" style="font-size:11px;color:var(--text-secondary);">${pct(vals[i],goals[i])}%</span></div><div class="macro-bar"><div class="macro-fill ${colors[i]}" style="width:${pct(vals[i],goals[i])}%"></div></div></div>`;
+        }).join('')}
+      </div>`
+  });
+
+  // Card 4: Weekly plan overview
+  const sunday = new Date(today); sunday.setDate(today.getDate() - today.getDay());
+  const weekDays = Array.from({length:7}, (_,i) => { const d=new Date(sunday); d.setDate(sunday.getDate()+i); return d; });
+  cards.push({
+    type: 'week',
+    html: `
+      <div class="welcome-card-inner">
+        <div class="font-barlow-condensed text-xs mb-3" style="color:var(--text-muted);">THIS WEEK'S PLAN</div>
+        <div class="grid gap-1.5">
+          ${weekDays.map(d => {
+            const key = fmtDate(d);
+            const plan = data.plan[key];
+            const isToday = key === todayStr;
+            const stype = plan ? SESSION_TYPES.find(s=>s.id===plan.type) : null;
+            return `<div class="flex items-center gap-2 p-2 rounded-lg ${isToday?'':''}` +
+              `" style="${isToday?'background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.3);':'background:var(--bg-card2);border:1px solid var(--border);'}">
+              <div class="font-barlow-condensed text-xs w-8" style="color:${isToday?'var(--accent-orange)':'var(--text-muted)'};">${DAYS[d.getDay()].toUpperCase()}</div>
+              ${stype ? `<div class="w-2 h-2 rounded-full ${stype.dotClass} flex-shrink-0"></div><div class="font-barlow-condensed text-xs flex-1" style="color:var(--text-secondary);">${stype.label}${plan.startTime?' · '+plan.startTime:''}</div>` : `<div class="font-barlow-condensed text-xs flex-1" style="color:var(--text-muted);">—</div>`}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`
+  });
+
+  // Cards 5+: quotes
+  const shuffled = [...QUOTES].sort(() => Math.random()-0.5).slice(0,1);
+  shuffled.forEach(q => {
+    cards.push({
+      type: 'quote',
+      html: `
+        <div class="welcome-card-inner text-center" style="justify-content:space-between;">
+          <div class="font-bebas text-6xl" style="color:rgba(249,115,22,0.15); line-height:1;">"</div>
+          <div class="font-barlow-condensed text-lg font-semibold px-2" style="color:var(--text-primary); line-height:1.4; flex:1; display:flex; align-items:center; justify-content:center;">"${q.text}"</div>
+          <div class="font-barlow-condensed text-sm mt-4" style="color:var(--accent-orange);">— ${q.author}</div>
+        </div>`
+    });
+  });
+
+  // Last card: enter app
+  cards.push({
+    type: 'enter',
+    html: `
+      <div class="welcome-card-inner text-center">
+        <div class="font-bebas text-4xl mb-2" style="color:var(--accent-orange);">LET'S GET TO WORK</div>
+        <div class="font-barlow-condensed text-sm mb-6" style="color:var(--text-secondary);">Champions are built in the off-season.</div>
+        <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">TAP TO ENTER</div>
+      </div>`
+  });
+
+  return cards;
+}
+
+function showWelcomeSplash() {
+  welcomeCards = buildWelcomeCards();
+  welcomeIdx = 0;
+  document.getElementById('welcomeScreen').classList.remove('hidden');
+  document.getElementById('welcomeScreen').style.display = 'flex';
+  renderWelcomeCard();
+  renderWelcomeDots();
+}
+
+function renderWelcomeCard() {
+  const card = document.getElementById('welcomeCard');
+  card.classList.add('fade');
+  setTimeout(() => {
+    card.innerHTML = welcomeCards[welcomeIdx]?.html || '';
+    card.classList.remove('fade');
+    renderWelcomeDots();
+    // Update hint text
+    const isLast = welcomeIdx === welcomeCards.length - 1;
+    document.getElementById('welcomeHint').textContent = isLast ? 'TAP TO ENTER APP' : 'TAP ANYWHERE TO CONTINUE';
+  }, 150);
+}
+
+function renderWelcomeDots() {
+  document.getElementById('welcomeDots').innerHTML = welcomeCards.map((_,i) =>
+    `<div class="w-dot ${i===welcomeIdx?'active':''}"></div>`
+  ).join('');
+}
+
+function cycleWelcomeCard() {
+  if (welcomeIdx < welcomeCards.length - 1) {
+    welcomeIdx++;
+    renderWelcomeCard();
+  } else {
+    // Enter the app
+    document.getElementById('welcomeScreen').style.display = 'none';
+    document.getElementById('welcomeScreen').classList.add('hidden');
+    localStorage.setItem('df_welcome_seen', fmtDate(new Date()));
+  }
+}
+
+// ══════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
   seedSampleData();
+
   // Set nav colors
   document.querySelectorAll('.nav-btn').forEach(b => {
     b.style.color = b.dataset.page === 'dashboard' ? 'var(--accent-orange)' : 'var(--text-muted)';
   });
-  // Init dates
-  document.getElementById('nut-date').value = fmtDate(new Date());
-  document.getElementById('lift-date').value = fmtDate(new Date());
-  document.getElementById('hit-date').value = fmtDate(new Date());
-  document.getElementById('bp-date').value = fmtDate(new Date());
-  // Render
+
+  // Render app
   renderDashboard();
   renderLibrary();
   renderTemplates();
-  // Animate rings
   setTimeout(() => renderDashboard(), 100);
+
+  // ── First run: show onboarding ──
+  if (!localStorage.getItem('df_onboarded')) {
+    startOnboarding();
+    return;
+  }
+
+  // ── Every open: show welcome splash ──
+  showWelcomeSplash();
 });
 
 </script>
