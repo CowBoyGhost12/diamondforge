@@ -397,7 +397,12 @@
   .ob-dot.active { background: var(--accent-orange); width: 22px; border-radius: 4px; }
 
   /* Welcome card fade */
-  #welcomeCard { transition: opacity 0.3s ease; }
+  #welcomeCard {
+    transition: opacity 0.25s ease;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    will-change: opacity;
+  }
   #welcomeCard.fade { opacity: 0; }
 
   /* Welcome card inner */
@@ -661,7 +666,9 @@
   display:flex; flex-direction:column;
   align-items:center; justify-content:center;
   padding: env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0) 0;
-  cursor:pointer;" onclick="cycleWelcomeCard()">
+  cursor:pointer;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);" id="welcomeScreen">
 
   <!-- Logo/title at top -->
   <div class="text-center mb-8" style="position:absolute; top: calc(env(safe-area-inset-top,0px) + 32px); left:0; right:0;">
@@ -1528,6 +1535,21 @@
     </div>
 
     <button onclick="saveSettings()" class="btn-primary w-full mb-3">Save Settings</button>
+
+    <!-- API Key -->
+    <div class="card p-4 mb-3">
+      <div class="font-barlow-condensed text-xs font-semibold mb-1" style="color:var(--text-muted);">ANTHROPIC API KEY</div>
+      <div class="font-barlow-condensed text-xs mb-3" style="color:var(--text-muted);">Required for AI meal photo scanning. Get yours free at <span style="color:var(--accent-orange);">console.anthropic.com</span></div>
+      <div class="flex gap-2 mb-2">
+        <input type="password" id="s-api-key" placeholder="sk-ant-..." class="flex-1 text-sm" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <button onclick="toggleApiKeyVisibility()" class="btn-secondary px-3" id="apiKeyToggle">👁</button>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="saveApiKey()" class="btn-primary flex-1">Save Key</button>
+        <button onclick="clearApiKey()" class="btn-secondary px-4" style="color:var(--accent-red); border-color:rgba(239,68,68,0.3);">Clear</button>
+      </div>
+      <div class="font-barlow-condensed text-xs mt-2 hidden" id="apiKeyStatus"></div>
+    </div>
 
     <!-- Danger zone -->
     <div class="card p-4" style="border-color: rgba(239,68,68,0.2);">
@@ -2796,6 +2818,13 @@ function handleFoodPhoto(event) {
 
 async function startAIScan() {
   if (!aiPhotoBase64) return;
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    showToast('Add your API key in Settings first');
+    return;
+  }
+
   showPhotoState('loading');
   document.getElementById('loadingLabel').textContent = 'IDENTIFYING MEAL...';
   document.getElementById('loadingSubLabel').textContent = 'AI is scanning your photo';
@@ -2830,7 +2859,12 @@ Respond ONLY with valid JSON, no markdown, no preamble, in this exact format:
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
@@ -2923,6 +2957,8 @@ function submitOtherAnswer() {
 }
 
 async function estimateMacros() {
+  const apiKey = getApiKey();
+  if (!apiKey) { showToast('Add your API key in Settings first'); return; }
   showPhotoState('loading');
   document.getElementById('loadingLabel').textContent = 'CALCULATING...';
   document.getElementById('loadingSubLabel').textContent = 'Estimating your macros';
@@ -2948,7 +2984,12 @@ Respond ONLY with valid JSON, no markdown:
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 500,
@@ -3181,6 +3222,19 @@ function renderSettings() {
   updateCalcStats(profile, g);
   updateMacroSplitBar(g);
 
+  // Populate API key field
+  const savedKey = getApiKey();
+  const keyEl = document.getElementById('s-api-key');
+  if (keyEl) {
+    keyEl.value = savedKey ? savedKey : '';
+    const status = document.getElementById('apiKeyStatus');
+    if (savedKey && status) {
+      status.textContent = '✓ API key saved — AI scan is ready';
+      status.style.color = 'var(--accent-green)';
+      status.classList.remove('hidden');
+    }
+  }
+
   // ── Auto-save every field on change ──
   const profileFields = ['s-name','s-age','s-position','s-height-ft','s-height-in','s-weight','s-throws','s-bats'];
   const macroFields   = ['s-goal-cal','s-goal-pro','s-goal-carb','s-goal-fat'];
@@ -3304,6 +3358,44 @@ function autoCalcMacros() {
   showToast('Macros calculated from TDEE ✓');
 }
 
+function saveApiKey() {
+  const key = document.getElementById('s-api-key').value.trim();
+  if (!key) { showToast('Paste your API key first'); return; }
+  if (!key.startsWith('sk-ant-')) { showToast('Key should start with sk-ant-'); return; }
+  localStorage.setItem('df_api_key', key);
+  const status = document.getElementById('apiKeyStatus');
+  status.textContent = '✓ Key saved — AI scan is ready';
+  status.style.color = 'var(--accent-green)';
+  status.classList.remove('hidden');
+  showToast('API key saved ✓');
+}
+
+function clearApiKey() {
+  localStorage.removeItem('df_api_key');
+  document.getElementById('s-api-key').value = '';
+  const status = document.getElementById('apiKeyStatus');
+  status.textContent = 'Key cleared';
+  status.style.color = 'var(--text-muted)';
+  status.classList.remove('hidden');
+  showToast('API key cleared');
+}
+
+function toggleApiKeyVisibility() {
+  const input = document.getElementById('s-api-key');
+  const btn   = document.getElementById('apiKeyToggle');
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁';
+  }
+}
+
+function getApiKey() {
+  return localStorage.getItem('df_api_key') || '';
+}
+
 function saveSettings() {
   autoSaveSettings();
   showToast('Settings saved ✓');
@@ -3313,7 +3405,7 @@ function resetAllData() {
   if (!confirm('Reset ALL DiamondForge data? This cannot be undone.')) return;
   ['df_plan','df_logs','df_templates','df_nutrition','df_goals','df_profile','df_exercises',
    'df_seeded','df_nut_date','df_lift_date','df_hit_date','df_bp_date',
-   'df_onboarded','df_welcome_seen'].forEach(k => localStorage.removeItem(k));
+   'df_onboarded','df_welcome_seen','df_api_key'].forEach(k => localStorage.removeItem(k));
   location.reload();
 }
 
@@ -3605,8 +3697,16 @@ function buildWelcomeCards() {
 function showWelcomeSplash() {
   welcomeCards = buildWelcomeCards();
   welcomeIdx = 0;
-  document.getElementById('welcomeScreen').classList.remove('hidden');
-  document.getElementById('welcomeScreen').style.display = 'flex';
+  const screen = document.getElementById('welcomeScreen');
+  screen.classList.remove('hidden');
+  screen.style.display = 'flex';
+
+  // Attach listener once (clone to remove any old listeners)
+  const fresh = screen.cloneNode(false);
+  while (screen.firstChild) fresh.appendChild(screen.firstChild);
+  screen.parentNode.replaceChild(fresh, screen);
+  fresh.addEventListener('click', cycleWelcomeCard);
+
   renderWelcomeCard();
   renderWelcomeDots();
 }
@@ -3615,12 +3715,14 @@ function renderWelcomeCard() {
   const card = document.getElementById('welcomeCard');
   card.classList.add('fade');
   setTimeout(() => {
-    card.innerHTML = welcomeCards[welcomeIdx]?.html || '';
-    card.classList.remove('fade');
-    renderWelcomeDots();
-    // Update hint text
-    const isLast = welcomeIdx === welcomeCards.length - 1;
-    document.getElementById('welcomeHint').textContent = isLast ? 'TAP TO ENTER APP' : 'TAP ANYWHERE TO CONTINUE';
+    card.innerHTML = '';
+    setTimeout(() => {
+      card.innerHTML = welcomeCards[welcomeIdx]?.html || '';
+      card.classList.remove('fade');
+      renderWelcomeDots();
+      const isLast = welcomeIdx === welcomeCards.length - 1;
+      document.getElementById('welcomeHint').textContent = isLast ? 'TAP TO ENTER APP' : 'TAP ANYWHERE TO CONTINUE';
+    }, 30);
   }, 150);
 }
 
@@ -3635,9 +3737,9 @@ function cycleWelcomeCard() {
     welcomeIdx++;
     renderWelcomeCard();
   } else {
-    // Enter the app
-    document.getElementById('welcomeScreen').style.display = 'none';
-    document.getElementById('welcomeScreen').classList.add('hidden');
+    const screen = document.getElementById('welcomeScreen');
+    screen.style.display = 'none';
+    screen.classList.add('hidden');
     localStorage.setItem('df_welcome_seen', fmtDate(new Date()));
   }
 }
