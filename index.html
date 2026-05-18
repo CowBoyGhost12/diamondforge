@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>DiamondForge — Baseball Training Planner</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;0,800;0,900;1,700&family=Barlow:wght@300;400;500;600&family=Bebas+Neue&display=swap" rel="stylesheet">
@@ -106,6 +106,9 @@
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
   /* Input styles */
+  /* iOS zoom prevention — font-size must be >= 16px on inputs */
+  input, select, textarea { font-size: 16px !important; }
+
   input, select, textarea {
     background: var(--bg-card3);
     border: 1px solid var(--border2);
@@ -257,6 +260,17 @@
 
   /* Drag handle */
   .drag-over { border-color: var(--accent-orange) !important; background: rgba(249,115,22,0.05) !important; }
+
+  .drag-handle {
+    cursor: grab;
+    color: var(--text-muted);
+    padding: 4px;
+    flex-shrink: 0;
+    touch-action: none;
+  }
+  .drag-handle:active { cursor: grabbing; }
+  .wd-ex-card { transition: opacity 0.15s; }
+  .wd-ex-card.dragging { opacity: 0.4; }
 
   /* Scrollable content area */
   .main-content {
@@ -504,21 +518,34 @@
 
   <!-- ── PLANNER ── -->
   <div class="page" id="page-planner">
-    <div class="mb-4">
-      <p class="font-barlow-condensed text-sm" style="color: var(--text-muted);">WEEKLY SCHEDULE</p>
-      <h1 class="font-bebas text-4xl tracking-wide">Training Planner</h1>
+    <div class="mb-3">
+      <p class="font-barlow-condensed text-sm" style="color: var(--text-muted);">TRAINING SCHEDULE</p>
+      <h1 class="font-bebas text-4xl tracking-wide">Planner</h1>
+    </div>
+
+    <!-- View toggle + nav row -->
+    <div class="flex items-center justify-between mb-3 gap-2">
+      <!-- Prev / label / Next -->
+      <button onclick="plannerNav(-1)" class="font-bebas text-xl px-2" style="color:var(--accent-orange);">‹</button>
+      <div class="font-barlow-condensed font-bold text-sm flex-1 text-center" id="plannerRangeLabel"></div>
+      <button onclick="plannerNav(1)" class="font-bebas text-xl px-2" style="color:var(--accent-orange);">›</button>
+    </div>
+    <div class="flex gap-2 mb-3 justify-center">
+      <button class="tab-pill" id="view-day" onclick="setPlannerView('day')">Day</button>
+      <button class="tab-pill active" id="view-week" onclick="setPlannerView('week')">Week</button>
+      <button class="tab-pill" id="view-month" onclick="setPlannerView('month')">Month</button>
     </div>
 
     <!-- Phase selector -->
-    <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
+    <div class="flex gap-2 mb-3 overflow-x-auto pb-1">
       <button class="tab-pill active" data-phase="Early Offseason" onclick="setPhase(this)">Early Off</button>
       <button class="tab-pill" data-phase="Strength Phase" onclick="setPhase(this)">Strength</button>
       <button class="tab-pill" data-phase="Power Phase" onclick="setPhase(this)">Power</button>
       <button class="tab-pill" data-phase="Pre-Season" onclick="setPhase(this)">Pre-Season</button>
     </div>
 
-    <!-- Weekly summary strip -->
-    <div class="card2 p-3 mb-4">
+    <!-- Weekly summary strip (hidden in day view) -->
+    <div class="card2 p-3 mb-3" id="plannerSummary">
       <div class="grid grid-cols-4 gap-2 text-center">
         <div><div class="font-bebas text-xl" style="color:var(--accent-blue);" id="plan-lifts">0</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">LIFTS</div></div>
         <div><div class="font-bebas text-xl" style="color:var(--accent-green);" id="plan-hitting">0</div><div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">HITTING</div></div>
@@ -527,9 +554,8 @@
       </div>
     </div>
 
-    <!-- 7-day grid -->
-    <div id="weekGrid" class="grid gap-2" style="grid-template-columns: repeat(7, 1fr);">
-    </div>
+    <!-- Dynamic calendar grid -->
+    <div id="plannerGrid"></div>
 
     <div class="mt-3 flex gap-2 flex-wrap">
       <div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full dot-strength"></div><span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">Strength</span></div>
@@ -542,21 +568,22 @@
 
   <!-- ── WORKOUTS ── -->
   <div class="page" id="page-workouts">
-    <div class="mb-4">
-      <p class="font-barlow-condensed text-sm" style="color: var(--text-muted);">EXERCISE LIBRARY</p>
-      <h1 class="font-bebas text-4xl tracking-wide">Workout Builder</h1>
+
+    <!-- TOP LEVEL: header + tabs (hidden when inside a workout) -->
+    <div id="workout-top">
+      <div class="mb-4">
+        <p class="font-barlow-condensed text-sm" style="color: var(--text-muted);">EXERCISE LIBRARY</p>
+        <h1 class="font-bebas text-4xl tracking-wide">Workout Builder</h1>
+      </div>
+      <div class="flex gap-2 mb-4 overflow-x-auto pb-1" id="workoutTabBar">
+        <button class="tab-pill active" onclick="setWorkoutTab('library', this)">Library</button>
+        <button class="tab-pill" onclick="setWorkoutTab('workouts', this)">Workouts</button>
+        <button class="tab-pill" onclick="setWorkoutTab('new', this)">+ New Workout</button>
+      </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
-      <button class="tab-pill active" onclick="setWorkoutTab('library', this)">Library</button>
-      <button class="tab-pill" onclick="setWorkoutTab('builder', this)">Builder</button>
-      <button class="tab-pill" onclick="setWorkoutTab('templates', this)">Templates</button>
-    </div>
-
-    <!-- Library -->
+    <!-- LIBRARY TAB -->
     <div id="workout-library">
-      <!-- Add exercise form -->
       <div class="card p-4 mb-3">
         <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color:var(--text-muted);">ADD EXERCISE TO LIBRARY</div>
         <div class="grid grid-cols-2 gap-2 mb-2">
@@ -581,11 +608,11 @@
           </div>
           <div>
             <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">DEFAULT SETS</label>
-            <input type="number" id="new-ex-sets" placeholder="3" min="1" max="20" class="w-full mt-1 text-sm">
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="new-ex-sets" placeholder="3" min="1" max="20" class="w-full mt-1 text-sm">
           </div>
           <div>
             <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">DEFAULT REPS</label>
-            <input type="number" id="new-ex-reps" placeholder="10" min="1" max="999" class="w-full mt-1 text-sm">
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="new-ex-reps" placeholder="10" min="1" max="999" class="w-full mt-1 text-sm">
           </div>
           <div>
             <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">REST BETWEEN SETS</label>
@@ -601,7 +628,7 @@
           </div>
           <div>
             <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">WEIGHT (optional)</label>
-            <input type="number" id="new-ex-weight" placeholder="0 lb" min="0" class="w-full mt-1 text-sm">
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="new-ex-weight" placeholder="0 lb" min="0" class="w-full mt-1 text-sm">
           </div>
           <div class="col-span-2">
             <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">NOTES</label>
@@ -610,8 +637,6 @@
         </div>
         <button onclick="addExerciseToLibrary()" class="btn-primary w-full">Add to Library</button>
       </div>
-
-      <!-- Search + filter -->
       <div class="card2 flex items-center gap-2 p-2 mb-3">
         <svg width="16" height="16" fill="none" stroke="var(--text-muted)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input type="text" id="exerciseSearch" placeholder="Search exercises..." class="flex-1 bg-transparent border-none p-0 text-sm" oninput="renderLibrary()" style="outline:none;">
@@ -629,34 +654,143 @@
       <div id="exerciseList" class="card p-2"></div>
     </div>
 
-    <!-- Builder -->
-    <div id="workout-builder" class="hidden">
-      <div class="card p-4 mb-4">
-        <div class="font-barlow-condensed font-semibold text-sm mb-3" style="color:var(--text-muted);">WORKOUT DETAILS</div>
-        <input type="text" id="wb-name" placeholder="Workout name..." class="w-full mb-2 text-sm">
-        <select id="wb-phase" class="w-full mb-2 text-sm">
-          <option value="Early Offseason">Early Offseason</option>
-          <option value="Strength Phase">Strength Phase</option>
-          <option value="Power Phase">Power Phase</option>
-          <option value="Pre-Season">Pre-Season</option>
-        </select>
-        <select id="wb-type" class="w-full text-sm">
-          <option value="strength">Strength</option>
-          <option value="hitting">Hitting</option>
-          <option value="bullpen">Bullpen</option>
-          <option value="recovery">Recovery</option>
-        </select>
-      </div>
-
-      <div id="builderExercises" class="mb-4"></div>
-
-      <button onclick="addExerciseToBuilder()" class="btn-secondary w-full mb-3">+ Add Exercise</button>
-      <button onclick="saveWorkoutTemplate()" class="btn-primary w-full">Save Template</button>
+    <!-- WORKOUTS LIST TAB -->
+    <div id="workout-workouts" class="hidden">
+      <div id="workoutsList"></div>
     </div>
 
-    <!-- Templates -->
-    <div id="workout-templates" class="hidden">
-      <div id="templatesList"></div>
+    <!-- NEW WORKOUT TAB -->
+    <div id="workout-new" class="hidden">
+      <div class="card p-4 mb-4">
+        <div class="font-barlow-condensed font-semibold text-sm mb-3" style="color:var(--text-muted);">WORKOUT DETAILS</div>
+        <div class="mb-2">
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">NAME</label>
+          <input type="text" id="wb-name" placeholder="e.g. Lower Body Power..." class="w-full mt-1 text-sm">
+        </div>
+        <div class="mb-2">
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PHASE</label>
+          <select id="wb-phase" class="w-full mt-1 text-sm">
+            <option value="Early Offseason">Early Offseason</option>
+            <option value="Strength Phase">Strength Phase</option>
+            <option value="Power Phase">Power Phase</option>
+            <option value="Pre-Season">Pre-Season</option>
+          </select>
+        </div>
+        <div>
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">TYPE</label>
+          <select id="wb-type" class="w-full mt-1 text-sm">
+            <option value="strength">Strength</option>
+            <option value="hitting">Hitting</option>
+            <option value="bullpen">Bullpen</option>
+            <option value="recovery">Recovery</option>
+          </select>
+        </div>
+      </div>
+      <button onclick="createNewWorkout()" class="btn-primary w-full">Create Workout</button>
+    </div>
+
+    <!-- WORKOUT DETAIL VIEW (inside tab, replaces list) -->
+    <div id="workout-detail" class="hidden">
+      <!-- Back button + title -->
+      <div class="flex items-center gap-3 mb-4">
+        <button onclick="closeWorkoutDetail()" class="flex items-center gap-1 font-barlow-condensed text-sm" style="color:var(--accent-orange);">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+          Workouts
+        </button>
+      </div>
+      <div class="flex items-start justify-between mb-1">
+        <div>
+          <div id="wd-badge" class="inline-block font-barlow-condensed text-xs px-2 py-0.5 rounded mb-1"></div>
+          <h2 class="font-bebas text-3xl tracking-wide" id="wd-name"></h2>
+          <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);" id="wd-meta"></div>
+        </div>
+        <button onclick="deleteWorkout()" class="font-barlow-condensed text-xs mt-1" style="color:var(--accent-red);">Delete</button>
+      </div>
+
+      <div class="my-4 p-3 rounded-lg" style="background:var(--bg-card2); border:1px solid var(--border);">
+        <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">Hold <span style="color:var(--text-secondary);">≡</span> and drag to reorder exercises</div>
+      </div>
+
+      <!-- Exercise list (drag to reorder) -->
+      <div id="wd-exercises" class="mb-3"></div>
+
+      <!-- Add exercise button -->
+      <button onclick="openExPicker()" class="btn-secondary w-full mb-3">+ Add Exercise</button>
+      <button onclick="saveWorkoutDetail()" class="btn-primary w-full">Save Changes</button>
+    </div>
+
+  </div>
+
+  <!-- EXERCISE PICKER MODAL (for adding to a workout) -->
+  <div class="modal-overlay" id="exPickerModal">
+    <div class="modal-box p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div class="font-bebas text-2xl">Add Exercise</div>
+        <button onclick="closeExPicker()" style="color:var(--text-muted);" class="text-2xl leading-none">&times;</button>
+      </div>
+
+      <!-- Toggle: from library or custom -->
+      <div class="flex gap-2 mb-4">
+        <button class="tab-pill active" id="picker-lib-btn" onclick="setPickerMode('library')">From Library</button>
+        <button class="tab-pill" id="picker-custom-btn" onclick="setPickerMode('custom')">Custom</button>
+      </div>
+
+      <!-- Library picker -->
+      <div id="picker-library-view">
+        <div class="card2 flex items-center gap-2 p-2 mb-3">
+          <svg width="14" height="14" fill="none" stroke="var(--text-muted)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="pickerSearch" placeholder="Search library..." class="flex-1 bg-transparent border-none p-0 text-sm" oninput="renderPickerList()" style="outline:none;">
+        </div>
+        <div id="pickerList" class="mb-2" style="max-height:300px; overflow-y:auto;"></div>
+        <div class="font-barlow-condensed text-xs text-center" style="color:var(--text-muted);">Tap an exercise to add it</div>
+      </div>
+
+      <!-- Custom exercise entry -->
+      <div id="picker-custom-view" class="hidden">
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div class="col-span-2">
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">EXERCISE NAME</label>
+            <input type="text" id="picker-custom-name" placeholder="Exercise name..." class="w-full mt-1 text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">TYPE</label>
+            <select id="picker-custom-cat" class="w-full mt-1 text-sm">
+              <option value="strength">Strength</option>
+              <option value="power">Power</option>
+              <option value="rotational">Rotational</option>
+              <option value="shoulder">Shoulder</option>
+              <option value="mobility">Mobility</option>
+              <option value="cardio">Cardio</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">REST</label>
+            <select id="picker-custom-rest" class="w-full mt-1 text-sm">
+              <option value="30s">30 sec</option>
+              <option value="45s">45 sec</option>
+              <option value="60s">60 sec</option>
+              <option value="90s" selected>90 sec</option>
+              <option value="2min">2 min</option>
+              <option value="3min">3 min</option>
+              <option value="5min">5 min</option>
+            </select>
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">SETS</label>
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="picker-custom-sets" placeholder="3" min="1" class="w-full mt-1 text-sm">
+          </div>
+          <div>
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">REPS</label>
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="picker-custom-reps" placeholder="10" min="1" class="w-full mt-1 text-sm">
+          </div>
+          <div class="col-span-2">
+            <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">WEIGHT (lb, optional)</label>
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="picker-custom-weight" placeholder="0" min="0" class="w-full mt-1 text-sm">
+          </div>
+        </div>
+        <button onclick="addCustomExToWorkout()" class="btn-primary w-full">Add to Workout</button>
+      </div>
     </div>
   </div>
 
@@ -719,19 +853,19 @@
           </div>
           <div>
             <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">TOTAL SWINGS</label>
-            <input type="number" id="hit-swings" placeholder="0" class="w-full mt-1 text-sm">
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="hit-swings" placeholder="0" class="w-full mt-1 text-sm">
           </div>
           <div>
             <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">AVG EXIT VELO (mph)</label>
-            <input type="number" id="hit-avgvelo" placeholder="85" class="w-full mt-1 text-sm">
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="hit-avgvelo" placeholder="85" class="w-full mt-1 text-sm">
           </div>
           <div>
             <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">MAX EXIT VELO (mph)</label>
-            <input type="number" id="hit-maxvelo" placeholder="95" class="w-full mt-1 text-sm">
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="hit-maxvelo" placeholder="95" class="w-full mt-1 text-sm">
           </div>
           <div>
             <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">HARD HIT % (>95mph)</label>
-            <input type="number" id="hit-hardhit" placeholder="40" class="w-full mt-1 text-sm">
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="hit-hardhit" placeholder="40" class="w-full mt-1 text-sm">
           </div>
         </div>
 
@@ -759,15 +893,15 @@
           </div>
           <div>
             <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PITCH COUNT</label>
-            <input type="number" id="bp-count" placeholder="0" class="w-full mt-1 text-sm">
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="bp-count" placeholder="0" class="w-full mt-1 text-sm">
           </div>
           <div>
             <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">AVG VELOCITY (mph)</label>
-            <input type="number" id="bp-avgvelo" placeholder="85" class="w-full mt-1 text-sm">
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="bp-avgvelo" placeholder="85" class="w-full mt-1 text-sm">
           </div>
           <div>
             <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">MAX VELOCITY (mph)</label>
-            <input type="number" id="bp-maxvelo" placeholder="90" class="w-full mt-1 text-sm">
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="bp-maxvelo" placeholder="90" class="w-full mt-1 text-sm">
           </div>
         </div>
 
@@ -828,10 +962,10 @@
       </div>
       <div id="goalsForm" class="hidden mt-3">
         <div class="grid grid-cols-2 gap-2">
-          <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CALORIES</label><input type="number" id="goal-cal" class="w-full mt-1 text-sm" placeholder="3000"></div>
-          <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PROTEIN (g)</label><input type="number" id="goal-pro" class="w-full mt-1 text-sm" placeholder="200"></div>
-          <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CARBS (g)</label><input type="number" id="goal-carb" class="w-full mt-1 text-sm" placeholder="350"></div>
-          <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">FAT (g)</label><input type="number" id="goal-fat" class="w-full mt-1 text-sm" placeholder="100"></div>
+          <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CALORIES</label><input type="text" inputmode="decimal" pattern="[0-9]*" id="goal-cal" class="w-full mt-1 text-sm" placeholder="3000"></div>
+          <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PROTEIN (g)</label><input type="text" inputmode="decimal" pattern="[0-9]*" id="goal-pro" class="w-full mt-1 text-sm" placeholder="200"></div>
+          <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CARBS (g)</label><input type="text" inputmode="decimal" pattern="[0-9]*" id="goal-carb" class="w-full mt-1 text-sm" placeholder="350"></div>
+          <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">FAT (g)</label><input type="text" inputmode="decimal" pattern="[0-9]*" id="goal-fat" class="w-full mt-1 text-sm" placeholder="100"></div>
         </div>
         <button onclick="saveGoals()" class="btn-primary w-full mt-3">Save Goals</button>
       </div>
@@ -851,10 +985,10 @@
       <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color:var(--text-muted);">LOG MEAL</div>
       <div class="grid grid-cols-2 gap-2 mb-2">
         <div class="col-span-2"><input type="text" id="meal-name" placeholder="Meal name..." class="w-full text-sm"></div>
-        <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CALORIES</label><input type="number" id="meal-cal" placeholder="0" class="w-full mt-1 text-sm"></div>
-        <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PROTEIN (g)</label><input type="number" id="meal-pro" placeholder="0" class="w-full mt-1 text-sm"></div>
-        <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CARBS (g)</label><input type="number" id="meal-carb" placeholder="0" class="w-full mt-1 text-sm"></div>
-        <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">FAT (g)</label><input type="number" id="meal-fat" placeholder="0" class="w-full mt-1 text-sm"></div>
+        <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CALORIES</label><input type="text" inputmode="decimal" pattern="[0-9]*" id="meal-cal" placeholder="0" class="w-full mt-1 text-sm"></div>
+        <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PROTEIN (g)</label><input type="text" inputmode="decimal" pattern="[0-9]*" id="meal-pro" placeholder="0" class="w-full mt-1 text-sm"></div>
+        <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CARBS (g)</label><input type="text" inputmode="decimal" pattern="[0-9]*" id="meal-carb" placeholder="0" class="w-full mt-1 text-sm"></div>
+        <div><label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">FAT (g)</label><input type="text" inputmode="decimal" pattern="[0-9]*" id="meal-fat" placeholder="0" class="w-full mt-1 text-sm"></div>
       </div>
       <button onclick="logMeal()" class="btn-primary w-full">Add Meal</button>
     </div>
@@ -883,7 +1017,7 @@
         </div>
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">AGE</label>
-          <input type="number" id="s-age" placeholder="22" class="w-full mt-1 text-sm">
+          <input type="text" inputmode="decimal" pattern="[0-9]*" id="s-age" placeholder="22" class="w-full mt-1 text-sm">
         </div>
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">POSITION</label>
@@ -905,8 +1039,8 @@
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">HEIGHT</label>
           <div class="flex gap-1 mt-1">
-            <input type="number" id="s-height-ft" placeholder="6" class="w-1/2 text-sm" min="4" max="7">
-            <input type="number" id="s-height-in" placeholder="2" class="w-1/2 text-sm" min="0" max="11">
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="s-height-ft" placeholder="6" class="w-1/2 text-sm" min="4" max="7">
+            <input type="text" inputmode="decimal" pattern="[0-9]*" id="s-height-in" placeholder="2" class="w-1/2 text-sm" min="0" max="11">
           </div>
           <div class="flex gap-1 mt-0.5">
             <span class="font-barlow-condensed text-xs w-1/2 text-center" style="color:var(--text-muted);">ft</span>
@@ -915,7 +1049,7 @@
         </div>
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">WEIGHT (lbs)</label>
-          <input type="number" id="s-weight" placeholder="195" class="w-full mt-1 text-sm">
+          <input type="text" inputmode="decimal" pattern="[0-9]*" id="s-weight" placeholder="195" class="w-full mt-1 text-sm">
         </div>
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">THROWS</label>
@@ -968,19 +1102,19 @@
       <div class="grid grid-cols-2 gap-3 mb-3">
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">DAILY CALORIES</label>
-          <input type="number" id="s-goal-cal" placeholder="3000" class="w-full mt-1 text-sm">
+          <input type="text" inputmode="decimal" pattern="[0-9]*" id="s-goal-cal" placeholder="3000" class="w-full mt-1 text-sm">
         </div>
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">PROTEIN (g)</label>
-          <input type="number" id="s-goal-pro" placeholder="200" class="w-full mt-1 text-sm">
+          <input type="text" inputmode="decimal" pattern="[0-9]*" id="s-goal-pro" placeholder="200" class="w-full mt-1 text-sm">
         </div>
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">CARBS (g)</label>
-          <input type="number" id="s-goal-carb" placeholder="350" class="w-full mt-1 text-sm">
+          <input type="text" inputmode="decimal" pattern="[0-9]*" id="s-goal-carb" placeholder="350" class="w-full mt-1 text-sm">
         </div>
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">FAT (g)</label>
-          <input type="number" id="s-goal-fat" placeholder="100" class="w-full mt-1 text-sm">
+          <input type="text" inputmode="decimal" pattern="[0-9]*" id="s-goal-fat" placeholder="100" class="w-full mt-1 text-sm">
         </div>
       </div>
       <!-- Macro ratio bar -->
@@ -1069,12 +1203,30 @@
       <button onclick="closeDayModal()" style="color:var(--text-muted);" class="text-2xl leading-none">&times;</button>
     </div>
     <div class="grid grid-cols-1 gap-2" id="sessionTypeButtons"></div>
+
+    <!-- Time slots -->
+    <div class="mt-3 grid grid-cols-2 gap-2">
+      <div>
+        <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">START TIME</label>
+        <input type="time" id="modalStartTime" class="w-full mt-1 text-sm">
+      </div>
+      <div>
+        <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">END TIME</label>
+        <input type="time" id="modalEndTime" class="w-full mt-1 text-sm">
+      </div>
+    </div>
+
     <div class="mt-3">
+      <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">LOCATION (optional)</label>
+      <input type="text" id="modalLocation" placeholder="e.g. Weight Room, Cage 3..." class="w-full mt-1 text-sm">
+    </div>
+    <div class="mt-2">
       <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">NOTES</label>
       <textarea id="modalDayNotes" rows="2" class="w-full mt-1 text-sm" placeholder="Session notes..."></textarea>
     </div>
     <button onclick="assignDay()" class="btn-primary w-full mt-3">Assign</button>
-    <button onclick="clearDay()" class="btn-secondary w-full mt-2">Clear Day</button>
+    <button onclick="exportDayToAppleCalendar()" class="btn-secondary w-full mt-2">📅 Add to Apple Calendar</button>
+    <button onclick="clearDay()" class="btn-secondary w-full mt-2" style="color:var(--accent-red); border-color:rgba(239,68,68,0.3);">Clear Day</button>
   </div>
 </div>
 
@@ -1325,21 +1477,51 @@ function setRing(id, pct, pctId) {
 // ══════════════════════════════════════════════
 let modalDay = null;
 let selectedSessionType = null;
+let plannerView = 'week';   // 'day' | 'week' | 'month'
+let plannerOffset = 0;      // offset in days (day), weeks (week), months (month)
+
+function setPlannerView(v) {
+  plannerView = v;
+  plannerOffset = 0;
+  ['day','week','month'].forEach(id => {
+    document.getElementById('view-' + id)?.classList.toggle('active', id === v);
+  });
+  document.getElementById('plannerSummary').style.display = v === 'day' ? 'none' : '';
+  renderPlanner();
+}
+
+function plannerNav(dir) {
+  plannerOffset += dir;
+  renderPlanner();
+}
 
 function renderPlanner() {
   const data = loadData();
   const today = new Date();
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() - today.getDay());
 
-  const grid = document.getElementById('weekGrid');
+  if (plannerView === 'week') renderWeekView(data, today);
+  else if (plannerView === 'day') renderDayView(data, today);
+  else renderMonthView(data, today);
+}
+
+// ── WEEK VIEW ──
+function renderWeekView(data, today) {
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() - today.getDay() + plannerOffset * 7);
+
+  const endSat = new Date(sunday); endSat.setDate(sunday.getDate() + 6);
+  document.getElementById('plannerRangeLabel').textContent =
+    MONTHS[sunday.getMonth()] + ' ' + sunday.getDate() + ' – ' + MONTHS[endSat.getMonth()] + ' ' + endSat.getDate();
+
+  const grid = document.getElementById('plannerGrid');
   grid.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'grid gap-2';
+  wrap.style.gridTemplateColumns = 'repeat(7, 1fr)';
 
   let counts = { strength:0, hitting:0, bullpen:0, recovery:0 };
-
   for (let i = 0; i < 7; i++) {
-    const d = new Date(sunday);
-    d.setDate(sunday.getDate() + i);
+    const d = new Date(sunday); d.setDate(sunday.getDate() + i);
     const key = fmtDate(d);
     const isToday = key === fmtDate(today);
     const plan = data.plan[key];
@@ -1350,39 +1532,134 @@ function renderPlanner() {
     cell.className = 'day-cell p-1.5' + (isToday ? ' today' : '');
     cell.onclick = () => openDayModal(key, d);
     cell.innerHTML = `
-      <div class="font-barlow-condensed text-xs font-semibold mb-1" style="color:${isToday ? 'var(--accent-orange)' : 'var(--text-muted)'};">${DAYS[d.getDay()]}</div>
-      <div class="font-barlow-condensed font-bold text-sm" style="color:${isToday ? 'var(--accent-orange)' : 'var(--text-primary)'};">${d.getDate()}</div>
+      <div class="font-barlow-condensed text-xs font-semibold mb-1" style="color:${isToday?'var(--accent-orange)':'var(--text-muted)'};">${DAYS[d.getDay()]}</div>
+      <div class="font-barlow-condensed font-bold text-sm" style="color:${isToday?'var(--accent-orange)':'var(--text-primary)'};">${d.getDate()}</div>
       ${st ? `<div class="mt-1 w-2 h-2 rounded-full ${st.dotClass}"></div>
-      <div class="font-barlow-condensed text-xs mt-0.5 leading-tight" style="color:var(--text-secondary);font-size:10px;">${st.label}</div>` : ''}
+      <div class="font-barlow-condensed leading-tight" style="color:var(--text-secondary);font-size:9px;">${st.label}</div>
+      ${plan.startTime ? `<div style="color:var(--text-muted);font-size:9px;">${plan.startTime}</div>` : ''}` : ''}
     `;
-    grid.appendChild(cell);
+    wrap.appendChild(cell);
   }
-
+  grid.appendChild(wrap);
   document.getElementById('plan-lifts').textContent = counts.strength;
   document.getElementById('plan-hitting').textContent = counts.hitting;
   document.getElementById('plan-bullpen').textContent = counts.bullpen;
   document.getElementById('plan-recovery').textContent = counts.recovery;
 }
 
+// ── DAY VIEW ──
+function renderDayView(data, today) {
+  const d = new Date(today); d.setDate(today.getDate() + plannerOffset);
+  const key = fmtDate(d);
+  document.getElementById('plannerRangeLabel').textContent =
+    DAYS[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+
+  const plan = data.plan[key];
+  const st = plan ? SESSION_TYPES.find(s => s.id === plan.type) : null;
+  const grid = document.getElementById('plannerGrid');
+
+  if (!plan) {
+    grid.innerHTML = `<div class="card p-6 text-center">
+      <div class="font-barlow-condensed text-sm mb-3" style="color:var(--text-muted);">No session planned.</div>
+      <button onclick="openDayModal('${key}', new Date('${key}'))" class="btn-primary">+ Plan This Day</button>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = `<div class="card p-4">
+    <div class="flex items-start justify-between mb-3">
+      <div>
+        <span class="font-barlow-condensed text-xs px-2 py-0.5 rounded ${st.badgeClass}">${st.label}</span>
+        ${plan.startTime ? `<div class="font-bebas text-2xl mt-1" style="color:var(--accent-orange);">${plan.startTime}${plan.endTime ? ' – ' + plan.endTime : ''}</div>` : ''}
+        ${plan.location ? `<div class="font-barlow-condensed text-xs mt-1" style="color:var(--text-muted);">📍 ${plan.location}</div>` : ''}
+      </div>
+      <button onclick="openDayModal('${key}', new Date('${key}'))" class="font-barlow-condensed text-xs" style="color:var(--accent-orange);">Edit</button>
+    </div>
+    ${plan.notes ? `<div class="font-barlow-condensed text-sm" style="color:var(--text-secondary);">${plan.notes}</div>` : ''}
+    <button onclick="exportSingleDayToCalendar('${key}')" class="btn-secondary w-full mt-3">📅 Add to Apple Calendar</button>
+  </div>`;
+}
+
+// ── MONTH VIEW ──
+function renderMonthView(data, today) {
+  const base = new Date(today.getFullYear(), today.getMonth() + plannerOffset, 1);
+  const yr = base.getFullYear(); const mo = base.getMonth();
+  document.getElementById('plannerRangeLabel').textContent = MONTHS[mo] + ' ' + yr;
+
+  const firstDay = new Date(yr, mo, 1).getDay();
+  const daysInMonth = new Date(yr, mo + 1, 0).getDate();
+  const grid = document.getElementById('plannerGrid');
+  grid.innerHTML = '';
+
+  // Day-of-week headers
+  const headers = document.createElement('div');
+  headers.className = 'grid gap-1 mb-1';
+  headers.style.gridTemplateColumns = 'repeat(7, 1fr)';
+  DAYS.forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'font-barlow-condensed text-xs text-center';
+    h.style.color = 'var(--text-muted)';
+    h.textContent = d[0];
+    headers.appendChild(h);
+  });
+  grid.appendChild(headers);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'grid gap-1';
+  wrap.style.gridTemplateColumns = 'repeat(7, 1fr)';
+
+  // Blank cells before month starts
+  for (let i = 0; i < firstDay; i++) {
+    wrap.appendChild(Object.assign(document.createElement('div'), { className: 'day-cell p-1' }));
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(yr, mo, day);
+    const key = fmtDate(d);
+    const isToday = key === fmtDate(today);
+    const plan = data.plan[key];
+    const st = plan ? SESSION_TYPES.find(s => s.id === plan.type) : null;
+
+    const cell = document.createElement('div');
+    cell.className = 'day-cell p-1' + (isToday ? ' today' : '');
+    cell.style.minHeight = '44px';
+    cell.onclick = () => openDayModal(key, d);
+    cell.innerHTML = `
+      <div class="font-barlow-condensed font-bold" style="font-size:11px;color:${isToday?'var(--accent-orange)':'var(--text-primary)'};">${day}</div>
+      ${st ? `<div class="w-2 h-2 rounded-full ${st.dotClass} mt-0.5"></div>` : ''}
+      ${plan?.startTime ? `<div style="font-size:8px;color:var(--text-muted);">${plan.startTime}</div>` : ''}
+    `;
+    wrap.appendChild(cell);
+  }
+  grid.appendChild(wrap);
+}
+
 function openDayModal(key, date) {
   modalDay = key;
   selectedSessionType = null;
   const data = loadData();
-  document.getElementById('modalDayLabel').textContent = DAYS[date.getDay()] + ', ' + MONTHS[date.getMonth()] + ' ' + date.getDate();
-  document.getElementById('modalDayNotes').value = data.plan[key]?.notes || '';
+  const existing = data.plan[key];
+
+  // Handle both Date objects and date strings passed from month view
+  const d = date instanceof Date ? date : new Date(key + 'T12:00:00');
+  document.getElementById('modalDayLabel').textContent = DAYS[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
+  document.getElementById('modalDayNotes').value = existing?.notes || '';
+  document.getElementById('modalStartTime').value = existing?.startTime || '';
+  document.getElementById('modalEndTime').value = existing?.endTime || '';
+  document.getElementById('modalLocation').value = existing?.location || '';
 
   const btns = document.getElementById('sessionTypeButtons');
   btns.innerHTML = SESSION_TYPES.map(st => `
     <button onclick="selectSessionType('${st.id}', this)"
       class="flex items-center gap-3 p-3 rounded-lg border transition-all w-full text-left"
-      style="background:var(--bg-card2); border-color: var(--border);">
+      style="background:var(--bg-card2); border-color:${existing?.type===st.id?'var(--accent-orange)':'var(--border)'};">
       <div class="w-3 h-3 rounded-full ${st.dotClass} flex-shrink-0"></div>
       <span class="font-barlow-condensed font-bold text-sm">${st.label}</span>
-      ${data.plan[key]?.type === st.id ? '<span class="ml-auto font-barlow-condensed text-xs" style="color:var(--accent-orange);">CURRENT</span>' : ''}
+      ${existing?.type === st.id ? '<span class="ml-auto font-barlow-condensed text-xs" style="color:var(--accent-orange);">CURRENT</span>' : ''}
     </button>
   `).join('');
 
-  if (data.plan[key]) selectedSessionType = data.plan[key].type;
+  if (existing) selectedSessionType = existing.type;
   document.getElementById('dayModal').classList.add('open');
 }
 
@@ -1395,7 +1672,13 @@ function selectSessionType(id, el) {
 function assignDay() {
   if (!selectedSessionType) { showToast('Select a session type'); return; }
   const data = loadData();
-  data.plan[modalDay] = { type: selectedSessionType, notes: document.getElementById('modalDayNotes').value };
+  data.plan[modalDay] = {
+    type: selectedSessionType,
+    notes: document.getElementById('modalDayNotes').value,
+    startTime: document.getElementById('modalStartTime').value,
+    endTime: document.getElementById('modalEndTime').value,
+    location: document.getElementById('modalLocation').value,
+  };
   saveData('plan', data.plan);
   closeDayModal();
   renderPlanner();
@@ -1413,6 +1696,62 @@ function clearDay() {
 
 function closeDayModal() { document.getElementById('dayModal').classList.remove('open'); }
 
+// ── APPLE CALENDAR EXPORT ──
+function buildICS(key, plan) {
+  const st = SESSION_TYPES.find(s => s.id === plan.type) || SESSION_TYPES[0];
+  const dateStr = key.replace(/-/g, '');
+  let dtstart, dtend;
+
+  if (plan.startTime) {
+    const [sh, sm] = plan.startTime.split(':');
+    dtstart = dateStr + 'T' + sh + sm + '00';
+    if (plan.endTime) {
+      const [eh, em] = plan.endTime.split(':');
+      dtend = dateStr + 'T' + eh + em + '00';
+    } else {
+      // Default 1 hour
+      const endH = String(+sh + 1).padStart(2, '0');
+      dtend = dateStr + 'T' + endH + sm + '00';
+    }
+  } else {
+    // All-day event
+    dtstart = ';VALUE=DATE:' + dateStr;
+    dtend = ';VALUE=DATE:' + dateStr;
+    return `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//DiamondForge//EN\nBEGIN:VEVENT\nDTSTART${dtstart}\nDTEND${dtend}\nSUMMARY:${st.label} — DiamondForge\nDESCRIPTION:${(plan.notes||'').replace(/\n/g,'\\n')}\n${plan.location?'LOCATION:'+plan.location+'\n':''}END:VEVENT\nEND:VCALENDAR`;
+  }
+
+  return `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//DiamondForge//EN\nBEGIN:VEVENT\nDTSTART:${dtstart}\nDTEND:${dtend}\nSUMMARY:${st.label} — DiamondForge\nDESCRIPTION:${(plan.notes||'').replace(/\n/g,'\\n')}\n${plan.location?'LOCATION:'+plan.location+'\n':''}END:VEVENT\nEND:VCALENDAR`;
+}
+
+function exportDayToAppleCalendar() {
+  if (!selectedSessionType) { showToast('Assign a session type first'); return; }
+  const plan = {
+    type: selectedSessionType,
+    notes: document.getElementById('modalDayNotes').value,
+    startTime: document.getElementById('modalStartTime').value,
+    endTime: document.getElementById('modalEndTime').value,
+    location: document.getElementById('modalLocation').value,
+  };
+  downloadICS(modalDay, plan);
+}
+
+function exportSingleDayToCalendar(key) {
+  const data = loadData();
+  const plan = data.plan[key];
+  if (!plan) { showToast('No session on this day'); return; }
+  downloadICS(key, plan);
+}
+
+function downloadICS(key, plan) {
+  const ics = buildICS(key, plan);
+  const blob = new Blob([ics], { type: 'text/calendar' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'diamondforge-' + key + '.ics';
+  a.click();
+  showToast('ICS file downloaded — open to add to Calendar ✓');
+}
+
 function setPhase(el) {
   document.querySelectorAll('[data-phase]').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
@@ -1423,21 +1762,27 @@ function setPhase(el) {
 // ══════════════════════════════════════════════
 let currentExCat = 'all';
 let selectedExercise = null;
-let builderExercises = [];
+let builderExercises = []; // kept for log compatibility
+let currentWorkoutIdx = null;
+let workoutDetailExercises = [];
+let dragSrcIdx = null;
 
 function renderWorkouts() {
   renderLibrary();
-  renderTemplates();
+  renderWorkoutsList();
   populateLiftTemplates();
 }
 
 function setWorkoutTab(tab, el) {
-  ['library','builder','templates'].forEach(t => {
-    document.getElementById('workout-' + t).classList.toggle('hidden', t !== tab);
+  ['library','workouts','new','detail'].forEach(t => {
+    const el2 = document.getElementById('workout-' + t);
+    if (el2) el2.classList.toggle('hidden', t !== tab);
   });
-  document.querySelectorAll('#page-workouts .tab-pill').forEach(b => b.classList.remove('active'));
+  document.getElementById('workout-top').style.display = tab === 'detail' ? 'none' : '';
+  document.querySelectorAll('#workoutTabBar .tab-pill').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
-  if (tab === 'templates') renderTemplates();
+  if (tab === 'workouts') renderWorkoutsList();
+  if (tab === 'new') { document.getElementById('wb-name').value = ''; }
 }
 
 function setExCat(el) {
@@ -1463,7 +1808,6 @@ function addExerciseToLibrary() {
     notes:   document.getElementById('new-ex-notes').value.trim(),
   });
   saveExercises(exercises);
-  // clear form
   ['new-ex-name','new-ex-muscles','new-ex-notes'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('new-ex-sets').value   = '';
   document.getElementById('new-ex-reps').value   = '';
@@ -1533,118 +1877,264 @@ function deleteExerciseFromLibrary(id) {
 
 function closeExModal() { document.getElementById('exModal').classList.remove('open'); }
 
-function addToBuilderFromModal() {
-  if (currentExId === null) return;
-  const ex = getExercises().find(e => e.id === currentExId);
-  if (!ex) return;
-  builderExercises.push({ name: ex.name, cat: ex.cat, sets: ex.sets, reps: ex.reps, rest: ex.rest, weight: ex.weight || 0 });
-  setWorkoutTab('builder', null);
-  document.querySelectorAll('#page-workouts .tab-pill')[1].classList.add('active');
-  document.querySelectorAll('#page-workouts .tab-pill')[0].classList.remove('active');
-  renderBuilderExercises();
-  closeExModal();
-  showToast(ex.name + ' added to workout');
-}
-
-function addExerciseToBuilder() {
-  builderExercises.push({ name: '', cat: 'strength', sets: 3, reps: 10, rest: '90s', weight: 0 });
-  renderBuilderExercises();
-}
-
-function renderBuilderExercises() {
-  const el = document.getElementById('builderExercises');
-  if (!builderExercises.length) {
-    el.innerHTML = `<div class="font-barlow-condensed text-sm mb-3" style="color:var(--text-muted);">No exercises yet. Add from the Library or use the button below.</div>`;
+// ── WORKOUTS LIST ──
+function renderWorkoutsList() {
+  const data = loadData();
+  const el = document.getElementById('workoutsList');
+  if (!el) return;
+  if (!data.templates.length) {
+    el.innerHTML = `<div class="card p-6 text-center">
+      <div class="font-barlow-condensed text-sm mb-3" style="color:var(--text-muted);">No workouts yet.</div>
+      <button onclick="setWorkoutTab('new', document.querySelectorAll('#workoutTabBar .tab-pill')[2])" class="btn-primary">Create Your First Workout</button>
+    </div>`;
     return;
   }
-  el.innerHTML = builderExercises.map((ex, i) => `
-    <div class="card p-3 mb-2">
-      <div class="flex items-center gap-2 mb-2">
-        <input type="text" value="${ex.name}" placeholder="Exercise name..." class="font-barlow-condensed font-bold text-sm bg-transparent border-none p-0 flex-1"
-          style="outline:none; border-bottom:1px solid var(--border2);" onchange="builderExercises[${i}].name=this.value">
-        <button onclick="builderExercises.splice(${i},1);renderBuilderExercises()" style="color:var(--accent-red); flex-shrink:0;" class="text-xl leading-none">×</button>
+  el.innerHTML = data.templates.map((t, i) => {
+    const st = SESSION_TYPES.find(s => s.id === t.type) || SESSION_TYPES[0];
+    return `<div class="card p-4 mb-3 cursor-pointer" onclick="openWorkoutDetail(${i})" style="transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div class="flex items-center justify-between">
+        <div class="flex-1">
+          <div class="font-barlow-condensed font-bold text-base">${t.name}</div>
+          <div class="flex gap-2 mt-1 flex-wrap">
+            <span class="font-barlow-condensed text-xs px-2 py-0.5 rounded ${st.badgeClass}">${st.label}</span>
+            <span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${t.phase}</span>
+            <span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${(t.exercises||[]).length} exercises</span>
+          </div>
+        </div>
+        <svg width="16" height="16" fill="none" stroke="var(--text-muted)" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
-      <div class="grid grid-cols-2 gap-2 mb-2">
+    </div>`;
+  }).join('');
+}
+
+// ── CREATE NEW WORKOUT ──
+function createNewWorkout() {
+  const name = document.getElementById('wb-name').value.trim();
+  if (!name) { showToast('Enter a workout name'); return; }
+  const data = loadData();
+  data.templates.push({
+    name,
+    phase: document.getElementById('wb-phase').value,
+    type:  document.getElementById('wb-type').value,
+    exercises: [],
+  });
+  saveData('templates', data.templates);
+  document.getElementById('wb-name').value = '';
+  showToast(name + ' created ✓');
+  openWorkoutDetail(data.templates.length - 1);
+}
+
+// ── WORKOUT DETAIL VIEW ──
+function openWorkoutDetail(idx) {
+  const data = loadData();
+  const t = data.templates[idx];
+  if (!t) return;
+  currentWorkoutIdx = idx;
+  workoutDetailExercises = JSON.parse(JSON.stringify(t.exercises || []));
+
+  const st = SESSION_TYPES.find(s => s.id === t.type) || SESSION_TYPES[0];
+  document.getElementById('wd-name').textContent = t.name;
+  document.getElementById('wd-meta').textContent = t.phase;
+  const badge = document.getElementById('wd-badge');
+  badge.textContent = st.label;
+  badge.className = `inline-block font-barlow-condensed text-xs px-2 py-0.5 rounded ${st.badgeClass}`;
+
+  ['library','workouts','new'].forEach(tab => {
+    const el2 = document.getElementById('workout-' + tab);
+    if (el2) el2.classList.add('hidden');
+  });
+  document.getElementById('workout-detail').classList.remove('hidden');
+  document.getElementById('workout-top').style.display = 'none';
+  renderWorkoutDetailExercises();
+}
+
+function closeWorkoutDetail() {
+  document.getElementById('workout-detail').classList.add('hidden');
+  document.getElementById('workout-top').style.display = '';
+  setWorkoutTab('workouts', document.querySelectorAll('#workoutTabBar .tab-pill')[1]);
+}
+
+function renderWorkoutDetailExercises() {
+  const el = document.getElementById('wd-exercises');
+  if (!workoutDetailExercises.length) {
+    el.innerHTML = `<div class="font-barlow-condensed text-sm mb-3 p-3 card" style="color:var(--text-muted);">No exercises yet. Tap "+ Add Exercise" below.</div>`;
+    return;
+  }
+  el.innerHTML = workoutDetailExercises.map((ex, i) => `
+    <div class="card wd-ex-card mb-2 p-3" draggable="true"
+      ondragstart="onDragStart(event,${i})"
+      ondragover="onDragOver(event,${i})"
+      ondrop="onDrop(event,${i})"
+      ondragend="onDragEnd(event)"
+      id="wd-ex-${i}">
+      <div class="flex items-center gap-2 mb-2">
+        <div class="drag-handle" title="Drag to reorder">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/>
+          </svg>
+        </div>
+        <div class="flex-1 font-barlow-condensed font-bold text-sm">${ex.name || 'Unnamed'}</div>
+        <button onclick="removeWdExercise(${i})" style="color:var(--accent-red); flex-shrink:0;" class="text-xl leading-none">×</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">TYPE</label>
-          <select class="w-full mt-1 text-sm" onchange="builderExercises[${i}].cat=this.value">
+          <select class="w-full mt-1 text-sm" onchange="workoutDetailExercises[${i}].cat=this.value">
             ${EX_CATS.map(c => `<option value="${c}" ${ex.cat===c?'selected':''}>${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join('')}
           </select>
         </div>
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">REST</label>
-          <select class="w-full mt-1 text-sm" onchange="builderExercises[${i}].rest=this.value">
+          <select class="w-full mt-1 text-sm" onchange="workoutDetailExercises[${i}].rest=this.value">
             ${REST_OPTIONS.map(r => `<option value="${r}" ${ex.rest===r?'selected':''}>${r}</option>`).join('')}
           </select>
         </div>
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">SETS</label>
-          <input type="number" value="${ex.sets}" min="1" class="w-full mt-1 text-sm" onchange="builderExercises[${i}].sets=+this.value">
+          <input type="text" inputmode="decimal" pattern="[0-9]*" value="${ex.sets||3}" min="1" class="w-full mt-1 text-sm" onchange="workoutDetailExercises[${i}].sets=+this.value">
         </div>
         <div>
           <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">REPS</label>
-          <input type="number" value="${ex.reps}" min="1" class="w-full mt-1 text-sm" onchange="builderExercises[${i}].reps=+this.value">
+          <input type="text" inputmode="decimal" pattern="[0-9]*" value="${ex.reps||10}" min="1" class="w-full mt-1 text-sm" onchange="workoutDetailExercises[${i}].reps=+this.value">
         </div>
         <div class="col-span-2">
-          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">DEFAULT WEIGHT (lb, optional)</label>
-          <input type="number" value="${ex.weight}" min="0" placeholder="0" class="w-full mt-1 text-sm" onchange="builderExercises[${i}].weight=+this.value">
+          <label class="font-barlow-condensed text-xs" style="color:var(--text-muted);">WEIGHT (lb, optional)</label>
+          <input type="text" inputmode="decimal" pattern="[0-9]*" value="${ex.weight||0}" min="0" class="w-full mt-1 text-sm" onchange="workoutDetailExercises[${i}].weight=+this.value">
         </div>
       </div>
     </div>
   `).join('');
 }
 
-function saveWorkoutTemplate() {
-  const name = document.getElementById('wb-name').value;
-  if (!name) { showToast('Add a workout name'); return; }
-  const data = loadData();
-  data.templates.push({
-    name,
-    phase: document.getElementById('wb-phase').value,
-    type: document.getElementById('wb-type').value,
-    exercises: [...builderExercises],
-  });
-  saveData('templates', data.templates);
-  builderExercises = [];
-  document.getElementById('wb-name').value = '';
-  renderBuilderExercises();
-  renderTemplates();
-  showToast('Template saved ✓');
+function removeWdExercise(i) {
+  workoutDetailExercises.splice(i, 1);
+  renderWorkoutDetailExercises();
 }
 
-function renderTemplates() {
+function saveWorkoutDetail() {
   const data = loadData();
-  const el = document.getElementById('templatesList');
-  if (!data.templates.length) {
-    el.innerHTML = `<div class="font-barlow-condensed text-sm" style="color:var(--text-muted);">No templates yet. Build one in the Builder tab.</div>`;
+  data.templates[currentWorkoutIdx].exercises = [...workoutDetailExercises];
+  saveData('templates', data.templates);
+  populateLiftTemplates();
+  showToast('Workout saved ✓');
+}
+
+function deleteWorkout() {
+  if (!confirm('Delete this workout?')) return;
+  const data = loadData();
+  data.templates.splice(currentWorkoutIdx, 1);
+  saveData('templates', data.templates);
+  closeWorkoutDetail();
+  showToast('Workout deleted');
+}
+
+// ── DRAG AND DROP ──
+function onDragStart(e, i) {
+  dragSrcIdx = i;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => document.getElementById('wd-ex-' + i)?.classList.add('dragging'), 0);
+}
+function onDragOver(e, i) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.wd-ex-card').forEach(c => c.style.borderColor = '');
+  if (i !== dragSrcIdx) document.getElementById('wd-ex-' + i).style.borderColor = 'var(--accent-orange)';
+}
+function onDrop(e, i) {
+  e.preventDefault();
+  if (dragSrcIdx === null || dragSrcIdx === i) return;
+  const moved = workoutDetailExercises.splice(dragSrcIdx, 1)[0];
+  workoutDetailExercises.splice(i, 0, moved);
+  dragSrcIdx = null;
+  renderWorkoutDetailExercises();
+}
+function onDragEnd() {
+  dragSrcIdx = null;
+  document.querySelectorAll('.wd-ex-card').forEach(c => {
+    c.classList.remove('dragging');
+    c.style.borderColor = '';
+  });
+}
+
+// ── EXERCISE PICKER MODAL ──
+function openExPicker() {
+  renderPickerList();
+  document.getElementById('exPickerModal').classList.add('open');
+  setPickerMode('library');
+}
+function closeExPicker() { document.getElementById('exPickerModal').classList.remove('open'); }
+
+function setPickerMode(mode) {
+  document.getElementById('picker-library-view').classList.toggle('hidden', mode !== 'library');
+  document.getElementById('picker-custom-view').classList.toggle('hidden', mode !== 'custom');
+  document.getElementById('picker-lib-btn').classList.toggle('active', mode === 'library');
+  document.getElementById('picker-custom-btn').classList.toggle('active', mode === 'custom');
+  if (mode === 'library') renderPickerList();
+}
+
+function renderPickerList() {
+  const search = (document.getElementById('pickerSearch')?.value || '').toLowerCase();
+  const exercises = getExercises().filter(e => e.name.toLowerCase().includes(search));
+  const el = document.getElementById('pickerList');
+  if (!exercises.length) {
+    el.innerHTML = `<div class="font-barlow-condensed text-sm p-2" style="color:var(--text-muted);">No exercises in library yet. Use "Custom" tab to add one directly.</div>`;
     return;
   }
-  el.innerHTML = data.templates.map((t, i) => {
-    const st = SESSION_TYPES.find(s => s.id === t.type) || SESSION_TYPES[0];
-    return `<div class="card p-4 mb-3">
-      <div class="flex items-center justify-between mb-2">
-        <div>
-          <div class="font-barlow-condensed font-bold">${t.name}</div>
-          <div class="flex gap-2 mt-1">
-            <span class="font-barlow-condensed text-xs px-2 py-0.5 rounded ${st.badgeClass}">${st.label}</span>
-            <span class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${t.phase}</span>
-          </div>
-        </div>
-        <button onclick="deleteTemplate(${i})" style="color:var(--accent-red);" class="text-sm font-barlow-condensed">Delete</button>
+  el.innerHTML = exercises.map(ex => `
+    <div class="exercise-item" onclick="addLibExToWorkout(${ex.id})">
+      <div class="flex-1">
+        <div class="font-barlow-condensed font-bold text-sm">${ex.name}</div>
+        <div class="font-barlow-condensed text-xs" style="color:var(--text-muted);">${ex.cat} · ${ex.sets}×${ex.reps} · rest ${ex.rest}</div>
       </div>
-      <div class="space-y-1">
-        ${t.exercises.map(e => `<div class="font-barlow-condensed text-xs" style="color:var(--text-secondary);">· ${e.name} — ${e.sets}×${e.reps}${e.weight ? ' @ '+e.weight+'lb' : ''} · rest ${e.rest||'90s'}</div>`).join('')}
-      </div>
-    </div>`;
-  }).join('');
+      <svg width="16" height="16" fill="none" stroke="var(--accent-orange)" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+  `).join('');
 }
 
+function addLibExToWorkout(id) {
+  const ex = getExercises().find(e => e.id === id);
+  if (!ex) return;
+  workoutDetailExercises.push({
+    name: ex.name, cat: ex.cat,
+    sets: ex.sets, reps: ex.reps,
+    rest: ex.rest, weight: ex.weight || 0,
+  });
+  renderWorkoutDetailExercises();
+  closeExPicker();
+  showToast(ex.name + ' added ✓');
+}
+
+function addCustomExToWorkout() {
+  const name = document.getElementById('picker-custom-name').value.trim();
+  if (!name) { showToast('Enter an exercise name'); return; }
+  workoutDetailExercises.push({
+    name,
+    cat:    document.getElementById('picker-custom-cat').value,
+    sets:   +document.getElementById('picker-custom-sets').value   || 3,
+    reps:   +document.getElementById('picker-custom-reps').value   || 10,
+    rest:   document.getElementById('picker-custom-rest').value    || '90s',
+    weight: +document.getElementById('picker-custom-weight').value || 0,
+  });
+  document.getElementById('picker-custom-name').value   = '';
+  document.getElementById('picker-custom-sets').value   = '';
+  document.getElementById('picker-custom-reps').value   = '';
+  document.getElementById('picker-custom-weight').value = '';
+  renderWorkoutDetailExercises();
+  closeExPicker();
+  showToast(name + ' added ✓');
+}
+
+// Legacy stubs so log section still works
+function addExerciseToBuilder() {}
+function renderBuilderExercises() {}
+function renderTemplates() { renderWorkoutsList(); }
+function saveWorkoutTemplate() { createNewWorkout(); }
 function deleteTemplate(i) {
   const data = loadData();
   data.templates.splice(i, 1);
   saveData('templates', data.templates);
-  renderTemplates();
-  showToast('Template deleted');
+  renderWorkoutsList();
+  showToast('Workout deleted');
 }
 
 // ══════════════════════════════════════════════
@@ -1723,8 +2213,8 @@ function renderLiftExercises() {
       ${ex.sets.map((s, si) => `
         <div class="set-row">
           <div class="set-num">${si+1}</div>
-          <input type="number" value="${s.reps}" class="flex-1 text-sm" onchange="liftExercises[${ei}].sets[${si}].reps=+this.value">
-          <input type="number" value="${s.wt}" class="flex-1 text-sm" placeholder="lb" onchange="liftExercises[${ei}].sets[${si}].wt=+this.value">
+          <input type="text" inputmode="decimal" pattern="[0-9]*" value="${s.reps}" class="flex-1 text-sm" onchange="liftExercises[${ei}].sets[${si}].reps=+this.value">
+          <input type="text" inputmode="decimal" pattern="[0-9]*" value="${s.wt}" class="flex-1 text-sm" placeholder="lb" onchange="liftExercises[${ei}].sets[${si}].wt=+this.value">
           <div class="set-check ${s.done ? 'done' : ''}" onclick="toggleSet(${ei},${si})">
             ${s.done ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
           </div>
