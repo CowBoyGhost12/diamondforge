@@ -1408,6 +1408,24 @@
       <h1 class="font-bebas text-4xl tracking-wide">Settings</h1>
     </div>
 
+    <!-- API Key — placed at top so it's always visible -->
+    <div class="card p-4 mb-4" style="border-color:rgba(249,115,22,0.25);">
+      <div class="flex items-center gap-2 mb-1">
+        <div class="w-2 h-2 rounded-full" style="background:var(--accent-orange);"></div>
+        <div class="font-barlow-condensed text-xs font-semibold" style="color:var(--accent-orange);">ANTHROPIC API KEY</div>
+      </div>
+      <div class="font-barlow-condensed text-xs mb-3" style="color:var(--text-muted);">Required for AI meal photo scanning. Get yours free at console.anthropic.com</div>
+      <div class="flex gap-2 mb-2">
+        <input type="password" id="s-api-key" placeholder="sk-ant-api03-..." class="flex-1 text-sm" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <button onclick="toggleApiKeyVisibility()" class="btn-secondary px-3" id="apiKeyToggle">👁</button>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="saveApiKey()" class="btn-primary flex-1">Save Key</button>
+        <button onclick="clearApiKey()" class="btn-secondary px-4" style="color:var(--accent-red); border-color:rgba(239,68,68,0.3);">Clear</button>
+      </div>
+      <div class="font-barlow-condensed text-xs mt-2 hidden" id="apiKeyStatus"></div>
+    </div>
+
     <!-- Athlete Profile -->
     <div class="card p-4 mb-4">
       <div class="font-barlow-condensed text-xs font-semibold mb-3" style="color:var(--text-muted);">ATHLETE PROFILE</div>
@@ -1535,21 +1553,6 @@
     </div>
 
     <button onclick="saveSettings()" class="btn-primary w-full mb-3">Save Settings</button>
-
-    <!-- API Key -->
-    <div class="card p-4 mb-3">
-      <div class="font-barlow-condensed text-xs font-semibold mb-1" style="color:var(--text-muted);">ANTHROPIC API KEY</div>
-      <div class="font-barlow-condensed text-xs mb-3" style="color:var(--text-muted);">Required for AI meal photo scanning. Get yours free at <span style="color:var(--accent-orange);">console.anthropic.com</span></div>
-      <div class="flex gap-2 mb-2">
-        <input type="password" id="s-api-key" placeholder="sk-ant-..." class="flex-1 text-sm" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-        <button onclick="toggleApiKeyVisibility()" class="btn-secondary px-3" id="apiKeyToggle">👁</button>
-      </div>
-      <div class="flex gap-2">
-        <button onclick="saveApiKey()" class="btn-primary flex-1">Save Key</button>
-        <button onclick="clearApiKey()" class="btn-secondary px-4" style="color:var(--accent-red); border-color:rgba(239,68,68,0.3);">Clear</button>
-      </div>
-      <div class="font-barlow-condensed text-xs mt-2 hidden" id="apiKeyStatus"></div>
-    </div>
 
     <!-- Danger zone -->
     <div class="card p-4" style="border-color: rgba(239,68,68,0.2);">
